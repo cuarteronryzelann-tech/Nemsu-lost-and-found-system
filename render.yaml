@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: nemsu-lost-and-found-system
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
+    envVars:
+      - key: PRODUCTION
+        value: true
+      # IMPORTANT: Set this MANUALLY in Render Dashboard to a fixed random string.
+      # Run this to generate one: python -c "import secrets; print(secrets.token_hex(32))"
+      # DO NOT use generateValue:true — that changes the key on every deploy and
+      # invalidates all user sessions (logs everyone out on redeploy).
+      - key: SECRET_KEY
+        sync: false
+      # REQUIRED: From your Google Cloud Console OAuth 2.0 credentials
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # REQUIRED: Must match exactly what's in Google Cloud Console Authorized Redirect URIs
+      # Example: https://nemsu-lost-and-found-system.onrender.com/auth/callback
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      # REQUIRED: Neon PostgreSQL connection string.
+      # Get it from https://neon.tech → your project → Connection Details.
+      # Format: postgresql://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require
+      - key: DATABASE_URL
+        sync: false
