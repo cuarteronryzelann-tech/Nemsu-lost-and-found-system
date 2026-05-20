@@ -1000,7 +1000,7 @@ document.head.appendChild(styleEl);
 
 {% block extra_js %}{% endblock %}
 
-{% if session.get('user') and session['user'].get('role') != 'admin' %}
+{% if session.get('user') and not is_admin %}
 <!-- ══════════════════════════════════════════════════════════
      GEMINI AI CHATBOT WIDGET (Users only)
      ══════════════════════════════════════════════════════════ -->
@@ -1395,13 +1395,13 @@ document.head.appendChild(styleEl);
 </script>
 {% endif %}
 
-{% if session.get('user') and session['user'].get('role') == 'admin' %}
+{% if session.get('user') and is_admin %}
 <!-- ══════════════════════════════════════════════════════════
      GEMINI AI ADMIN ASSISTANT WIDGET
      ══════════════════════════════════════════════════════════ -->
 <style>
   #admin-ai-fab {
-    position: fixed; bottom: 2rem; right: 1.2rem; z-index: 7000;
+    position: fixed; bottom: 1.5rem; right: 1.2rem; z-index: 9000;
     width: 52px; height: 52px; border-radius: 50%;
     background: linear-gradient(135deg, #0f766e, #065f46);
     border: none; cursor: pointer; color: #fff;
@@ -1421,7 +1421,7 @@ document.head.appendChild(styleEl);
   @keyframes adminAiPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
 
   #admin-ai-window {
-    position: fixed; bottom: 96px; right: 1.2rem; z-index: 7000;
+    position: fixed; bottom: 90px; right: 1.2rem; z-index: 9000;
     width: 380px; max-width: calc(100vw - 24px);
     background: #fff; border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.1);
@@ -1532,9 +1532,10 @@ document.head.appendChild(styleEl);
 </style>
 
 <!-- Admin AI FAB -->
-<button id="admin-ai-fab" aria-label="Open Admin AI Assistant" title="NEMSU Admin Assistant">
+<button id="admin-ai-fab" aria-label="Open Admin AI Assistant" title="Admin AI Assistant">
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    <polyline points="9 12 11 14 15 10"/>
   </svg>
   <span class="admin-ai-badge"></span>
 </button>
