@@ -1000,9 +1000,9 @@ document.head.appendChild(styleEl);
 
 {% block extra_js %}{% endblock %}
 
-{% if session.get('user') %}
+{% if session.get('user') and session['user'].get('role') != 'admin' %}
 <!-- ══════════════════════════════════════════════════════════
-     GEMINI AI CHATBOT WIDGET
+     GEMINI AI CHATBOT WIDGET (Users only)
      ══════════════════════════════════════════════════════════ -->
 <style>
   /* ── Chatbot FAB button ── */
@@ -1391,8 +1391,307 @@ document.head.appendChild(styleEl);
     msgs.innerHTML = '';
     if (qrContainer) qrContainer.style.display = 'flex';
     addBotMessage(WELCOME);
+  })();
+</script>
+{% endif %}
+
+{% if session.get('user') and session['user'].get('role') == 'admin' %}
+<!-- ══════════════════════════════════════════════════════════
+     GEMINI AI ADMIN ASSISTANT WIDGET
+     ══════════════════════════════════════════════════════════ -->
+<style>
+  #admin-ai-fab {
+    position: fixed; bottom: 2rem; right: 1.2rem; z-index: 7000;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #0f766e, #065f46);
+    border: none; cursor: pointer; color: #fff;
+    box-shadow: 0 4px 20px rgba(15,118,110,.45);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .2s, box-shadow .2s;
+    outline: none;
+  }
+  #admin-ai-fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(15,118,110,.55); }
+  #admin-ai-fab svg { width: 24px; height: 24px; }
+  #admin-ai-fab .admin-ai-badge {
+    position: absolute; top: -3px; right: -3px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #f59e0b; border: 2px solid #fff;
+    animation: adminAiPulse 2s infinite;
+  }
+  @keyframes adminAiPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+
+  #admin-ai-window {
+    position: fixed; bottom: 96px; right: 1.2rem; z-index: 7000;
+    width: 380px; max-width: calc(100vw - 24px);
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.1);
+    display: flex; flex-direction: column; overflow: hidden;
+    transform-origin: bottom right;
+    transform: scale(0); opacity: 0; pointer-events: none;
+    transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .18s ease;
+    max-height: 540px;
+  }
+  #admin-ai-window.open { transform: scale(1); opacity: 1; pointer-events: all; }
+
+  .admin-ai-header {
+    background: linear-gradient(135deg, #0f766e, #065f46);
+    color: #fff; padding: .9rem 1rem; display: flex; align-items: center; gap: .7rem; flex-shrink: 0;
+  }
+  .admin-ai-header-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+  }
+  .admin-ai-header-info { flex: 1; min-width: 0; }
+  .admin-ai-header-name { font-weight: 700; font-size: .9rem; }
+  .admin-ai-header-status { font-size: .74rem; opacity: .85; display: flex; align-items: center; gap: .3rem; }
+  .admin-ai-online-dot { width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; }
+  .admin-ai-close-btn {
+    background: rgba(255,255,255,.15); border: none; cursor: pointer; color: #fff;
+    width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    transition: background .15s; flex-shrink: 0;
+  }
+  .admin-ai-close-btn:hover { background: rgba(255,255,255,.28); }
+  .admin-ai-close-btn svg { width: 14px; height: 14px; }
+
+  .admin-ai-messages {
+    flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .7rem;
+    scroll-behavior: smooth;
+  }
+  .admin-ai-messages::-webkit-scrollbar { width: 4px; }
+  .admin-ai-messages::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+  .admin-ai-msg { display: flex; gap: .55rem; align-items: flex-end; max-width: 100%; }
+  .admin-ai-msg.user { flex-direction: row-reverse; }
+  .admin-ai-msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #0f766e, #065f46);
+    display: flex; align-items: center; justify-content: center; font-size: .75rem; color: #fff;
+  }
+  .admin-ai-msg.user .admin-ai-msg-avatar { background: linear-gradient(135deg, #374151, #1f2937); }
+  .admin-ai-bubble {
+    max-width: 82%; padding: .6rem .9rem; border-radius: 14px;
+    font-size: .83rem; line-height: 1.5; word-break: break-word;
+    background: #f0fdf4; color: #1e293b; border-bottom-left-radius: 4px;
+  }
+  .admin-ai-msg.user .admin-ai-bubble {
+    background: linear-gradient(135deg, #374151, #1f2937); color: #fff;
+    border-bottom-left-radius: 14px; border-bottom-right-radius: 4px;
+  }
+  .admin-ai-typing .admin-ai-bubble {
+    display: flex; gap: 4px; align-items: center; padding: .7rem .9rem;
+  }
+  .admin-ai-dot { width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; animation: adminAiTyping 1.2s infinite; }
+  .admin-ai-dot:nth-child(2) { animation-delay: .2s; }
+  .admin-ai-dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes adminAiTyping { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }
+
+  .admin-ai-quick-replies {
+    display: flex; gap: .4rem; flex-wrap: wrap; padding: .5rem 1rem 0;
+  }
+  .admin-ai-qr {
+    padding: .32rem .72rem; border-radius: 20px;
+    border: 1.5px solid #99f6e4; background: #f0fdf4; color: #0f766e;
+    font-size: .75rem; font-weight: 600; cursor: pointer;
+    transition: all .15s; white-space: nowrap;
+  }
+  .admin-ai-qr:hover { background: #0f766e; color: #fff; border-color: #0f766e; }
+
+  .admin-ai-input-area {
+    border-top: 1px solid #f1f5f9; padding: .7rem 1rem;
+    display: flex; gap: .6rem; align-items: flex-end; flex-shrink: 0;
+  }
+  .admin-ai-input {
+    flex: 1; border: 1.5px solid #e2e8f0; border-radius: 12px;
+    padding: .55rem .85rem; font-size: .83rem; resize: none;
+    outline: none; font-family: inherit; color: #1e293b;
+    max-height: 100px; min-height: 38px; line-height: 1.45;
+    transition: border-color .15s; scrollbar-width: none;
+  }
+  .admin-ai-input::-webkit-scrollbar { display: none; }
+  .admin-ai-input:focus { border-color: #0f766e; }
+  .admin-ai-input::placeholder { color: #94a3b8; }
+  .admin-ai-send-btn {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, #0f766e, #065f46);
+    border: none; cursor: pointer; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .15s, transform .15s;
+  }
+  .admin-ai-send-btn:hover { opacity: .88; transform: scale(1.05); }
+  .admin-ai-send-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .admin-ai-send-btn svg { width: 15px; height: 15px; }
+  .admin-ai-footer-bar {
+    padding: .35rem 1rem .5rem; text-align: center; border-top: 1px solid #f8fafc;
+  }
+  .admin-ai-clear-btn {
+    font-size: .7rem; color: #94a3b8; background: none; border: none;
+    cursor: pointer; padding: 0; transition: color .15s;
+  }
+  .admin-ai-clear-btn:hover { color: #64748b; }
+</style>
+
+<!-- Admin AI FAB -->
+<button id="admin-ai-fab" aria-label="Open Admin AI Assistant" title="NEMSU Admin Assistant">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>
+  </svg>
+  <span class="admin-ai-badge"></span>
+</button>
+
+<!-- Admin AI Window -->
+<div id="admin-ai-window" role="dialog" aria-label="NEMSU Admin AI Assistant">
+  <div class="admin-ai-header">
+    <div class="admin-ai-header-avatar">🛡️</div>
+    <div class="admin-ai-header-info">
+      <div class="admin-ai-header-name">Admin Assistant</div>
+      <div class="admin-ai-header-status">
+        <span class="admin-ai-online-dot"></span>
+        NEMSU LAF — Admin Panel AI
+      </div>
+    </div>
+    <button class="admin-ai-close-btn" id="admin-ai-close" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="admin-ai-messages" id="admin-ai-messages"></div>
+
+  <div class="admin-ai-quick-replies" id="admin-ai-quick-replies">
+    <button class="admin-ai-qr" data-q="How do I approve or deny a claim?">Approve claims</button>
+    <button class="admin-ai-qr" data-q="How do I manage reported items?">Handle reports</button>
+    <button class="admin-ai-qr" data-q="How do I archive an item?">Archive items</button>
+    <button class="admin-ai-qr" data-q="How do I disable a user account?">Disable users</button>
+  </div>
+
+  <div class="admin-ai-input-area">
+    <textarea class="admin-ai-input" id="admin-ai-input" placeholder="Ask about admin tasks…" rows="1" maxlength="1000"></textarea>
+    <button class="admin-ai-send-btn" id="admin-ai-send" aria-label="Send">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="admin-ai-footer-bar">
+    <button class="admin-ai-clear-btn" id="admin-ai-clear">Clear conversation</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var fab      = document.getElementById('admin-ai-fab');
+  var win      = document.getElementById('admin-ai-window');
+  var closeBtn = document.getElementById('admin-ai-close');
+  var msgs     = document.getElementById('admin-ai-messages');
+  var input    = document.getElementById('admin-ai-input');
+  var sendBtn  = document.getElementById('admin-ai-send');
+  var clearBtn = document.getElementById('admin-ai-clear');
+  var qrCont   = document.getElementById('admin-ai-quick-replies');
+
+  var history = [];
+  var loading = false;
+  var isOpen  = false;
+
+  var ADMIN_SYSTEM_PROMPT = "You are an AI assistant for the NEMSU Lost and Found System administrator panel.\n\nYou help admins with:\n- Approving or denying item claims and providing guidance on evidence review\n- Managing item statuses: Pending (awaiting approval), Available, Claimed, Archived\n- Handling abuse reports: dismissing, warning users, or deleting items\n- Disabling or re-enabling user accounts\n- Reading analytics: total items, claims, active users, turnover rate\n- Understanding the chat/messaging system between users\n- Archiving old or unclaimed items\n- Managing found items and lost item reports\n\nItem categories: Electronics, Clothing, Accessories, Books/Documents, Bags, Keys, ID Cards, Others.\nClaim statuses: Pending, Approved, Denied, Returned.\n\nBe concise (under 180 words), professional, and action-oriented. Focus on admin workflows and system management. If asked about things outside the admin panel, redirect to the relevant system feature.";
+
+  var WELCOME = "🛡️ Hi Admin! I'm your NEMSU LAF Admin Assistant. I can help you manage claims, reports, users, and items. What do you need?";
+
+  function openChat() {
+    isOpen = true;
+    win.classList.add('open');
+    if (msgs.children.length === 0) addBotMsg(WELCOME);
+    setTimeout(function() { input.focus(); }, 200);
+    scrollBottom();
+  }
+  function closeChat() { isOpen = false; win.classList.remove('open'); }
+
+  fab.addEventListener('click', function() { isOpen ? closeChat() : openChat(); });
+  closeBtn.addEventListener('click', closeChat);
+  document.addEventListener('click', function(e) {
+    if (isOpen && !win.contains(e.target) && e.target !== fab && !fab.contains(e.target)) closeChat();
   });
 
+  function scrollBottom() { setTimeout(function() { msgs.scrollTop = msgs.scrollHeight; }, 50); }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+  }
+
+  function addBotMsg(text) {
+    var d = document.createElement('div');
+    d.className = 'admin-ai-msg bot';
+    d.innerHTML = '<div class="admin-ai-msg-avatar">🛡️</div><div class="admin-ai-bubble">' + escHtml(text) + '</div>';
+    msgs.appendChild(d); scrollBottom(); return d;
+  }
+  function addUserMsg(text) {
+    var d = document.createElement('div');
+    d.className = 'admin-ai-msg user';
+    d.innerHTML = '<div class="admin-ai-msg-avatar">👤</div><div class="admin-ai-bubble">' + escHtml(text) + '</div>';
+    msgs.appendChild(d); scrollBottom();
+  }
+  function showTyping() {
+    var d = document.createElement('div');
+    d.className = 'admin-ai-msg bot admin-ai-typing'; d.id = 'admin-ai-typing';
+    d.innerHTML = '<div class="admin-ai-msg-avatar">🛡️</div><div class="admin-ai-bubble"><span class="admin-ai-dot"></span><span class="admin-ai-dot"></span><span class="admin-ai-dot"></span></div>';
+    msgs.appendChild(d); scrollBottom();
+  }
+  function hideTyping() { var t = document.getElementById('admin-ai-typing'); if (t) t.remove(); }
+
+  function send(text) {
+    text = (text || input.value).trim();
+    if (!text || loading) return;
+    if (qrCont) qrCont.style.display = 'none';
+    addUserMsg(text);
+    history.push({ role: 'user', text: text });
+    input.value = ''; resizeInput();
+    loading = true; sendBtn.disabled = true; showTyping();
+
+    var apiHistory = history.slice(0, -1).map(function(h) {
+      return { role: h.role === 'user' ? 'user' : 'model', text: h.text };
+    });
+
+    fetch('/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ message: text, history: apiHistory, context: 'admin' })
+    })
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      hideTyping(); loading = false; sendBtn.disabled = false;
+      var reply = (data.ok && data.reply) ? data.reply : (data.error || "Sorry, I couldn't get a response. Please try again.");
+      addBotMsg(reply);
+      history.push({ role: 'bot', text: reply });
+    })
+    .catch(function() {
+      hideTyping(); loading = false; sendBtn.disabled = false;
+      addBotMsg("I'm having trouble connecting right now. Please try again in a moment.");
+    });
+  }
+
+  if (qrCont) {
+    qrCont.addEventListener('click', function(e) {
+      var btn = e.target.closest('.admin-ai-qr');
+      if (btn) send(btn.dataset.q);
+    });
+  }
+
+  function resizeInput() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 100) + 'px'; }
+  input.addEventListener('input', resizeInput);
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  sendBtn.addEventListener('click', function() { send(); });
+  clearBtn.addEventListener('click', function() {
+    history = []; msgs.innerHTML = '';
+    if (qrCont) qrCont.style.display = 'flex';
+    addBotMsg(WELCOME);
+  });
 })();
 </script>
 {% endif %}

@@ -604,7 +604,7 @@
                 </span>
                 <div class="report-date">
                     <i class="far fa-clock"></i>
-                    {{ r.created_at[:16] }}
+                    {{ (r.created_at or '')[:16] or '—' }}
                 </div>
             </div>
 
@@ -632,8 +632,8 @@
                     </button>
                 </form>
 
-                {% if r.reported_item_id %}
-                <a href="{{ url_for('item.item_detail', item_id=r.reported_item_id) }}" 
+                {% if r.reported_item_id and r.reported_item_id > 0 %}
+                <a href="/items/{{ r.reported_item_id }}" 
                    class="btn btn-secondary" target="_blank">
                     <i class="fas fa-external-link-alt"></i> View Item
                 </a>
@@ -673,7 +673,7 @@
                 </span>
                 <div class="report-date">
                     <i class="far fa-clock"></i>
-                    {{ r.created_at[:16] }}
+                    {{ (r.created_at or '')[:16] or '—' }}
                 </div>
             </div>
 

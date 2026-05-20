@@ -71,6 +71,23 @@ Help users with:
 
 Be concise (under 150 words), warm, and helpful. For non-system questions, redirect to campus security or the admin office."""
 
+ADMIN_SYSTEM_PROMPT = """You are an AI assistant for the NEMSU Lost and Found System administrator panel.
+
+You help admins with:
+- Approving or denying item claims and guidance on evidence review
+- Managing item statuses: Pending (awaiting approval), Available, Claimed, Archived
+- Handling abuse reports: dismissing, warning users, or deleting items
+- Disabling or re-enabling user accounts
+- Reading analytics: total items, claims, active users, turnover rate
+- Understanding the chat/messaging system between users
+- Archiving old or unclaimed items
+- Managing found items and lost item reports
+
+Item categories: Electronics, Clothing, Accessories, Books/Documents, Bags, Keys, ID Cards, Others.
+Claim statuses: Pending, Approved, Denied, Returned.
+
+Be concise (under 180 words), professional, and action-oriented. Focus on admin workflows and system management."""
+
 # ── Auth decorator ───────────────────────────────────────────────────────
 def login_required(f):
     @wraps(f)
@@ -140,9 +157,10 @@ def _try_model(url: str, payload: dict, retries: int = 2):
 
 
 # ── Walk the model chain ─────────────────────────────────────────────────
-def _call_gemini(api_key: str, contents: list) -> str | None:
+def _call_gemini(api_key: str, contents: list, system_prompt: str = None) -> str | None:
+    prompt = system_prompt or SYSTEM_PROMPT
     payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "system_instruction": {"parts": [{"text": prompt}]},
         "contents": contents,
         "generationConfig": {
             "temperature": 0.7,
@@ -201,6 +219,11 @@ def chat():
     data         = request.get_json(silent=True) or {}
     user_message = (data.get("message") or "").strip()[:800]
     history      = data.get("history") or []
+    context      = data.get("context", "")
+
+    # Use admin prompt if the caller sent context="admin" AND the session user is actually an admin
+    is_admin_ctx = (context == "admin" and session["user"].get("role") == "admin")
+    system_prompt = ADMIN_SYSTEM_PROMPT if is_admin_ctx else SYSTEM_PROMPT
 
     if not user_message:
         return jsonify({"ok": False, "error": "Message cannot be empty"}), 400
@@ -214,7 +237,7 @@ def chat():
             contents.append({"role": role, "parts": [{"text": text}]})
     contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-    reply = _call_gemini(api_key, contents)
+    reply = _call_gemini(api_key, contents, system_prompt)
 
     if reply:
         return jsonify({"ok": True, "reply": reply})
