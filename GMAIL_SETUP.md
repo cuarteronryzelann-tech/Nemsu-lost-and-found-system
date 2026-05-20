@@ -1,88 +1,144 @@
 <!-- set up by ryzel ann cuarteron -->
 
+# Gmail Notification — Setup Guide
 
+## How it works
 
+The app sends email notifications via the **Gmail REST API over HTTPS (port 443)**.
+This avoids SMTP (port 587), which Render's free plan blocks on outbound connections.
 
+Notifications are sent for:
+- 💬 **New chat message** — recipient gets an email when they are offline
+- 🔖 **Item claimed** — the found-item reporter is notified when someone claims their item
+- 🔍 **Possible match** — a lost-item reporter is notified when a matching found item appears
 
-# Gmail Chat Notification — Setup Guide
-
-## What was added
-
-When any user sends a chat message, the **recipient** now automatically receives
-a formatted email notification (sent via Gmail SMTP) with:
-
-- Sender's name
-- Message preview (first 80 characters)
-- A "View Conversation" button that links directly to the chat thread
-
-Email failures are **silent** — they are logged but never break the chat flow.
+Email failures are **silent** — logged but they never break the app flow.
 
 ---
 
-## Files changed / added
+## Required environment variables
 
-| File | Change |
-|------|--------|
-| `utils/gmail_notify.py` | **NEW** — Gmail SMTP helper |
-| `controllers/chat_controller.py` | Added `send_chat_notification()` call in the `send` route |
-| `config.py` | Added `GMAIL_SENDER_EMAIL`, `GMAIL_APP_PASSWORD`, `APP_BASE_URL` config vars |
-| `requirements.txt` | Added comments (no new pip packages — uses stdlib `smtplib`) |
-| `templates/chat/inbox.html` | **Skeleton loading** added |
-| `templates/chat/conversation.html` | **Skeleton loading** added |
+| Variable | Description |
+|---|---|
+| `GMAIL_SENDER_EMAIL` | Gmail address used to send notifications (e.g. `nemsu.lostfound@gmail.com`) |
+| `GMAIL_REFRESH_TOKEN` | OAuth2 refresh token for that Gmail account (see steps below) |
+| `GOOGLE_CLIENT_ID` | Already set for Google login — reused here |
+| `GOOGLE_CLIENT_SECRET` | Already set for Google login — reused here |
+| `APP_BASE_URL` | *(optional)* Full base URL so email links work, e.g. `https://your-app.onrender.com` |
 
 ---
 
-## How to enable Gmail notifications
+## How to get your `GMAIL_REFRESH_TOKEN`
 
-### Step 1 — Create / choose a Gmail account
+### Step 1 — Enable the Gmail API
 
-Use a dedicated Gmail (e.g. `nemsu.lostfound@gmail.com`) for sending notifications.
+1. Go to [console.cloud.google.com](https://console.cloud.google.com).
+2. Select the same project that has your Google OAuth credentials.
+3. In the left menu go to **APIs & Services → Library**.
+4. Search for **Gmail API** and click **Enable**.
 
-### Step 2 — Generate a Gmail App Password
+### Step 2 — Add the Gmail send scope to your OAuth client
 
-1. Sign in to the Gmail account.
-2. Go to **myaccount.google.com → Security → 2-Step Verification**.
-3. Enable 2-Step Verification if not already on.
-4. Scroll down to **App Passwords**.
-5. Choose **Mail** + **Other (custom name)** → type "NEMSU LAF" → **Generate**.
-6. Copy the 16-character password shown (spaces are ignored).
+1. Go to **APIs & Services → OAuth consent screen**.
+2. Under **Scopes**, click **Add or Remove Scopes**.
+3. Add `https://www.googleapis.com/auth/gmail.send`.
+4. Save.
 
-### Step 3 — Set environment variables
+### Step 3 — Generate the refresh token (one-time)
 
-#### Local development (.env or shell)
+Run this in your terminal (requires Python + `requests`):
+
+```bash
+pip install requests
+python3 - <<'PYEOF'
+import urllib.parse, webbrowser
+
+CLIENT_ID     = "YOUR_GOOGLE_CLIENT_ID"
+REDIRECT_URI  = "urn:ietf:wg:oauth:2.0:oob"   # for desktop/manual flow
+SCOPE         = "https://www.googleapis.com/auth/gmail.send"
+
+url = (
+    "https://accounts.google.com/o/oauth2/v2/auth"
+    f"?client_id={CLIENT_ID}"
+    f"&redirect_uri={urllib.parse.quote(REDIRECT_URI)}"
+    f"&response_type=code"
+    f"&scope={urllib.parse.quote(SCOPE)}"
+    "&access_type=offline"
+    "&prompt=consent"
+)
+print("Open this URL in the browser and sign in with your sender Gmail account:")
+print(url)
+PYEOF
+```
+
+4. Sign in with the **sender Gmail account** (e.g. `nemsu.lostfound@gmail.com`).
+5. Copy the **authorization code** shown.
+
+```bash
+python3 - <<'PYEOF'
+import requests
+
+CLIENT_ID     = "YOUR_GOOGLE_CLIENT_ID"
+CLIENT_SECRET = "YOUR_GOOGLE_CLIENT_SECRET"
+REDIRECT_URI  = "urn:ietf:wg:oauth:2.0:oob"
+CODE          = "PASTE_AUTH_CODE_HERE"
+
+r = requests.post("https://oauth2.googleapis.com/token", data={
+    "code":          CODE,
+    "client_id":     CLIENT_ID,
+    "client_secret": CLIENT_SECRET,
+    "redirect_uri":  REDIRECT_URI,
+    "grant_type":    "authorization_code",
+})
+print(r.json())
+# Copy the value of "refresh_token" from the output
+PYEOF
+```
+
+6. Copy the `refresh_token` value — this is your `GMAIL_REFRESH_TOKEN`.
+
+---
+
+## Setting environment variables
+
+### Local development
 
 ```bash
 export GMAIL_SENDER_EMAIL="nemsu.lostfound@gmail.com"
-export GMAIL_APP_PASSWORD="abcd efgh ijkl mnop"   # paste the 16-char code
-export APP_BASE_URL="http://localhost:5000"        # optional but recommended
+export GMAIL_REFRESH_TOKEN="1//0gABCDEF..."   # from step above
+export GOOGLE_CLIENT_ID="73469908398-xxx.apps.googleusercontent.com"
+export GOOGLE_CLIENT_SECRET="GOCSPX-xxx"
+export APP_BASE_URL="http://localhost:5000"
 ```
 
-#### Render deployment
+Or add them to a `.env` file and load with `python-dotenv`.
+
+### Render deployment
 
 In your Render service → **Environment** tab, add:
 
 | Key | Value |
-|-----|-------|
+|---|---|
 | `GMAIL_SENDER_EMAIL` | `nemsu.lostfound@gmail.com` |
-| `GMAIL_APP_PASSWORD` | `abcdefghijklmnop` |
+| `GMAIL_REFRESH_TOKEN` | `1//0gABCDEF...` |
 | `APP_BASE_URL` | `https://your-app.onrender.com` |
 
-### Step 4 — Deploy / restart
-
-No code changes needed — just set the env vars and restart the server.
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are already set for OAuth login.
 
 ---
 
 ## Disable notifications
 
-Leave `GMAIL_SENDER_EMAIL` or `GMAIL_APP_PASSWORD` unset (empty).
-The system will log a warning and skip sending — nothing breaks.
+Leave `GMAIL_SENDER_EMAIL` or `GMAIL_REFRESH_TOKEN` unset (empty).
+The system logs a warning and skips sending — nothing breaks.
 
 ---
 
-## Skeleton loading
+## Files involved
 
-Both `inbox.html` and `conversation.html` now show animated placeholder skeletons
-(shimmer effect) while the page content loads. The skeleton auto-hides after
-**400–500 ms** (or when `DOMContentLoaded` fires, whichever is later), then
-smoothly reveals the real content. No JavaScript libraries required.
+| File | Purpose |
+|---|---|
+| `utils/gmail_notify.py` | Core sending logic (Gmail REST API, OAuth2) |
+| `controllers/chat_controller.py` | Calls `send_chat_notification()` on new message |
+| `controllers/user_controller.py` | Calls `send_match_notification()` and `send_claim_notification()` |
+| `config.py` | Declares `GMAIL_SENDER_EMAIL`, `GMAIL_REFRESH_TOKEN`, `APP_BASE_URL` |

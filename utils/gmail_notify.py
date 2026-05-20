@@ -27,18 +27,26 @@ import requests
 logger = logging.getLogger(__name__)
 
 # ── Config ─────────────────────────────────────────────────────────────────
-GMAIL_SENDER_EMAIL  = os.environ.get("GMAIL_SENDER_EMAIL", "")
-GMAIL_REFRESH_TOKEN = os.environ.get("GMAIL_REFRESH_TOKEN", "")
-GOOGLE_CLIENT_ID    = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET= os.environ.get("GOOGLE_CLIENT_SECRET", "")
+# NOTE: values are read at *call time* (not import time) via _cfg() so that
+# environment variables set after the module is first imported are still
+# picked up correctly (avoids silent empty-string failures on Render).
 
-GOOGLE_TOKEN_URL    = "https://oauth2.googleapis.com/token"
-GMAIL_SEND_URL      = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GMAIL_SEND_URL   = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+
+
+def _cfg(key: str) -> str:
+    """Read an env var at call time, not import time."""
+    return os.environ.get(key, "")
 
 
 def _get_access_token() -> str | None:
     """Exchange the refresh token for a short-lived access token."""
-    if not all([GMAIL_REFRESH_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET]):
+    refresh_token  = _cfg("GMAIL_REFRESH_TOKEN")
+    client_id      = _cfg("GOOGLE_CLIENT_ID")
+    client_secret  = _cfg("GOOGLE_CLIENT_SECRET")
+
+    if not all([refresh_token, client_id, client_secret]):
         logger.warning(
             "Gmail API: missing GMAIL_REFRESH_TOKEN, GOOGLE_CLIENT_ID, "
             "or GOOGLE_CLIENT_SECRET — skipping notification."
@@ -47,9 +55,9 @@ def _get_access_token() -> str | None:
 
     resp = requests.post(GOOGLE_TOKEN_URL, data={
         "grant_type":    "refresh_token",
-        "refresh_token": GMAIL_REFRESH_TOKEN,
-        "client_id":     GOOGLE_CLIENT_ID,
-        "client_secret": GOOGLE_CLIENT_SECRET,
+        "refresh_token": refresh_token,
+        "client_id":     client_id,
+        "client_secret": client_secret,
     }, timeout=10)
 
     if resp.status_code != 200:
@@ -165,7 +173,8 @@ def send_chat_notification(recipient_email: str,
 
     Returns True on success, False on any failure (error is logged).
     """
-    if not GMAIL_SENDER_EMAIL:
+    sender_email = _cfg("GMAIL_SENDER_EMAIL")
+    if not sender_email:
         logger.warning("Gmail notification skipped: GMAIL_SENDER_EMAIL not set.")
         return False
 
@@ -195,7 +204,7 @@ def send_chat_notification(recipient_email: str,
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"]    = f"NEMSU Lost & Found <{GMAIL_SENDER_EMAIL}>"
+    msg["From"]    = f"NEMSU Lost & Found <{sender_email}>"
     msg["To"]      = recipient_email
     msg.attach(MIMEText(text_body, "plain"))
     msg.attach(MIMEText(html_body, "html"))
@@ -235,7 +244,8 @@ def send_claim_notification(recipient_email: str,
                              item_link: str,
                              app_base_url: str = "") -> bool:
     """Notify a found-item reporter that someone claimed their item."""
-    if not GMAIL_SENDER_EMAIL:
+    sender_email = _cfg("GMAIL_SENDER_EMAIL")
+    if not sender_email:
         return False
     if not recipient_email:
         return False
@@ -286,7 +296,7 @@ def send_claim_notification(recipient_email: str,
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"NEMSU Lost & Found <{GMAIL_SENDER_EMAIL}>"
+    msg["From"] = f"NEMSU Lost & Found <{sender_email}>"
     msg["To"] = recipient_email
     msg.attach(MIMEText(text_body, "plain"))
     msg.attach(MIMEText(html_body, "html"))
@@ -330,7 +340,8 @@ def send_match_notification(
     Returns:
         True on success, False on any failure (error is logged, never raised).
     """
-    if not GMAIL_SENDER_EMAIL:
+    sender_email = _cfg("GMAIL_SENDER_EMAIL")
+    if not sender_email:
         logger.warning("Match notification skipped: GMAIL_SENDER_EMAIL not set.")
         return False
     if not recipient_email:
@@ -460,7 +471,7 @@ def send_match_notification(
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"]    = f"NEMSU Lost & Found <{GMAIL_SENDER_EMAIL}>"
+    msg["From"]    = f"NEMSU Lost & Found <{sender_email}>"
     msg["To"]      = recipient_email
     msg.attach(MIMEText(text_body, "plain"))
     msg.attach(MIMEText(html_body, "html"))
