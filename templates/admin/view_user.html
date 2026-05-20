@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}View User | NEMSU Admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>👤 User Profile</h2>
+    <div style="display:flex;gap:.6rem;align-items:center;">
+        <a href="{{ url_for('chat.admin_start_conversation', user_id=user.id) }}"
+           class="btn btn-primary" style="font-size:.85rem;">💬 Message User</a>
+        <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary" style="font-size:.85rem;">← Back to Users</a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+{% endwith %}
+
+<div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;align-items:start;">
+
+    <!-- Profile Card -->
+    <div style="background:#fff;border-radius:14px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid #e2e8f0;text-align:center;">
+        {% if user.profile_picture and user.profile_pic_status == 'approved' %}
+        <img src="{% if user.profile_picture and user.profile_picture.startswith('data:') %}{{ user.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ user.profile_picture) }}{% endif %}"
+             style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;margin-bottom:1rem;" />
+        {% elif user.profile_picture %}
+        <div style="position:relative;display:inline-block;margin-bottom:1rem;">
+            <img src="{% if user.profile_picture and user.profile_picture.startswith('data:') %}{{ user.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ user.profile_picture) }}{% endif %}"
+                 style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid #fbbf24;" />
+            <span style="position:absolute;bottom:0;right:0;background:#fbbf24;border-radius:50%;padding:.15rem .35rem;font-size:.7rem;">⏳</span>
+        </div>
+        {% else %}
+        <div style="width:100px;height:100px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:3rem;margin:0 auto 1rem;">👤</div>
+        {% endif %}
+
+        <h3 style="margin:0 0 .3rem;font-size:1.05rem;color:#1e293b;">{{ user.full_name }}</h3>
+        <p style="margin:0;font-size:.82rem;color:#64748b;">{{ user.email }}</p>
+
+        {% set ps = user.profile_pic_status or 'none' %}
+        <div style="margin:.85rem 0;">
+            {% if ps == 'approved' %}
+            <span style="background:#dcfce7;color:#166534;border-radius:999px;padding:.25rem .75rem;font-size:.78rem;font-weight:700;">✅ Picture Approved</span>
+            {% elif ps == 'pending' %}
+            <span style="background:#fef9c3;color:#854d0e;border-radius:999px;padding:.25rem .75rem;font-size:.78rem;font-weight:700;">⏳ Pending Review</span>
+            <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.75rem;">
+                <form method="POST" action="{{ url_for('admin.approve_user_picture', user_id=user.id) }}">
+                    <button type="submit" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:.4rem .9rem;font-size:.82rem;font-weight:700;cursor:pointer;">✅ Approve</button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.reject_user_picture', user_id=user.id) }}">
+                    <button type="submit" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:.4rem .9rem;font-size:.82rem;font-weight:700;cursor:pointer;">❌ Reject</button>
+                </form>
+            </div>
+            {% elif ps == 'rejected' %}
+            <span style="background:#fee2e2;color:#991b1b;border-radius:999px;padding:.25rem .75rem;font-size:.78rem;font-weight:700;">❌ Photo Rejected</span>
+            {% else %}
+            <span style="background:#f1f5f9;color:#94a3b8;border-radius:999px;padding:.25rem .75rem;font-size:.78rem;font-weight:700;">— No Picture</span>
+            {% endif %}
+        </div>
+
+        <hr style="border:none;border-top:1px solid #f1f5f9;margin:.75rem 0;" />
+        <div style="text-align:left;font-size:.84rem;color:#475569;">
+            <p style="margin:.35rem 0;"><strong>📞 Phone:</strong> {{ user.phone or '—' }}</p>
+            <p style="margin:.35rem 0;"><strong>🎓 Course:</strong> {{ user.course or '—' }}</p>
+            <p style="margin:.35rem 0;"><strong>📅 Year:</strong> {{ user.year_level or '—' }}</p>
+            <p style="margin:.35rem 0;"><strong>🕐 Joined:</strong> {{ user.created_at[:10] if user.created_at else '—' }}</p>
+            <p style="margin:.35rem 0;"><strong>🟢 Last Active:</strong> {{ user.last_active[:16] if user.last_active else '—' }}</p>
+        </div>
+    </div>
+
+    <!-- Activity -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+        <!-- Claims -->
+        <div style="background:#fff;border-radius:14px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid #e2e8f0;">
+            <h3 style="margin:0 0 1rem;font-size:.95rem;color:#1e293b;">🔖 Claims ({{ user_claims|length }})</h3>
+            {% if user_claims %}
+            <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+                <thead><tr style="background:#f8fafc;">
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Item ID</th>
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Status</th>
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Date</th>
+                </tr></thead>
+                <tbody>
+                {% for c in user_claims %}
+                <tr style="border-top:1px solid #f1f5f9;">
+                    <td style="padding:.5rem .75rem;">#{{ c.item_id }}</td>
+                    <td style="padding:.5rem .75rem;">
+                        <span style="border-radius:999px;padding:.15rem .55rem;font-size:.73rem;font-weight:700;
+                            background: {'pending':'#fef9c3','approved':'#dcfce7','denied':'#fee2e2'}.get('{{ c.status }}','#f1f5f9');
+                            color: {'pending':'#854d0e','approved':'#166534','denied':'#991b1b'}.get('{{ c.status }}','#64748b');">
+                            {{ c.status | capitalize }}
+                        </span>
+                    </td>
+                    <td style="padding:.5rem .75rem;color:#94a3b8;">{{ c.created_at[:10] if c.created_at else '—' }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#94a3b8;font-size:.85rem;margin:0;">No claims submitted.</p>
+            {% endif %}
+        </div>
+
+        <!-- Items Reported -->
+        <div style="background:#fff;border-radius:14px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid #e2e8f0;">
+            <h3 style="margin:0 0 1rem;font-size:.95rem;color:#1e293b;">📦 Items Reported ({{ user_items|length }})</h3>
+            {% if user_items %}
+            <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+                <thead><tr style="background:#f8fafc;">
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Name</th>
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Type</th>
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Status</th>
+                    <th style="padding:.5rem .75rem;text-align:left;color:#64748b;">Date</th>
+                </tr></thead>
+                <tbody>
+                {% for item in user_items %}
+                <tr style="border-top:1px solid #f1f5f9;">
+                    <td style="padding:.5rem .75rem;font-weight:600;">{{ item.name }}</td>
+                    <td style="padding:.5rem .75rem;">{{ item.type | capitalize }}</td>
+                    <td style="padding:.5rem .75rem;">{{ item.status | capitalize }}</td>
+                    <td style="padding:.5rem .75rem;color:#94a3b8;">{{ item.date_reported }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#94a3b8;font-size:.85rem;margin:0;">No items reported.</p>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,823 @@
+{% extends "base.html" %}
+{% block title %}Manage Items | NEMSU Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/manage_items.css') }}" />
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.page-header h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    margin: 0;
+}
+
+.page-header h2 i {
+    color: var(--primary);
+}
+
+.page-header span {
+    background: var(--gray-100);
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+/* Stats Bar */
+.stats-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    background: white;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.stat-item i {
+    margin-right: 0.5rem;
+}
+
+/* Filter Bar */
+.filter-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filter-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    border: 1.5px solid var(--gray-200);
+    background: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--gray-600);
+}
+
+.filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box input {
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    border-radius: 10px;
+    border: 1.5px solid var(--gray-200);
+    font-size: 0.85rem;
+    width: 260px;
+    transition: all 0.2s ease;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.search-box i {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+}
+
+/* Table Styling */
+.table-wrap {
+    overflow-x: auto;
+    border-radius: 16px;
+    background: white;
+    box-shadow: var(--shadow-md);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--gray-100);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.admin-table th {
+    background: var(--gray-50);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.admin-table tr:hover td {
+    background: var(--gray-50);
+}
+
+.admin-table td a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.admin-table td a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.badge-lost {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-found {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-status-listed {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-status-returned {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Location Badge */
+.loc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    background: #eff6ff;
+    color: var(--primary);
+    border-radius: 20px;
+    padding: 0.15rem 0.6rem;
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn {
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-200);
+}
+
+.delete-btn {
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.delete-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+/* Modal */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-box {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: var(--shadow-xl);
+    animation: slideInDown 0.3s ease;
+}
+
+.modal-box h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-box p {
+    margin: 0 0 1.25rem;
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.modal-box label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 0.5rem;
+}
+
+.modal-box textarea {
+    width: 100%;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 0.75rem;
+    font-size: 0.88rem;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.modal-box textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+}
+
+.modal-actions button {
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Skeleton Loader */
+.skeleton {
+    background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 1rem;
+    border-radius: 4px;
+}
+
+.skeleton-badge {
+    height: 0.8rem;
+    width: 2.5rem;
+    border-radius: 20px;
+}
+
+.skeleton-btn {
+    height: 1.8rem;
+    width: 4rem;
+    border-radius: 8px;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Flash Messages */
+.flash {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    animation: slideInRight 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.flash-success {
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid var(--success);
+}
+
+.flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid var(--danger);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .admin-table th,
+    .admin-table td {
+        padding: 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .modal-box {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 20px;
+    border: 1px solid var(--gray-200);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--gray-400);
+    margin-bottom: 1rem;
+}
+
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background: var(--gray-800);
+    color: white;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+    margin-bottom: 0.5rem;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-boxes"></i> Manage Items</h2>
+    <span><i class="fas fa-chart-line"></i> {{ items|length }} total items</span>
+</div>
+
+<!-- Stats Summary -->
+<div class="stats-bar">
+    <div class="stat-item">
+        <i class="fas fa-box"></i> Listed: {{ items|selectattr('status', 'equalto', 'listed')|list|length }}
+    </div>
+    <div class="stat-item">
+        <i class="fas fa-check-circle"></i> Returned: {{ items|selectattr('status', 'equalto', 'returned')|list|length }}
+    </div>
+    <div class="stat-item">
+        <i class="fas fa-exclamation-triangle"></i> Lost: {{ items|selectattr('type', 'equalto', 'lost')|list|length }}
+    </div>
+    <div class="stat-item">
+        <i class="fas fa-box-open"></i> Found: {{ items|selectattr('type', 'equalto', 'found')|list|length }}
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">
+            <i class="fas {% if cat == 'success' %}fa-check-circle{% elif cat == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+            <span>{{ msg }}</span>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+    <div class="filter-group">
+        <button class="filter-btn active" data-filter="all">
+            <i class="fas fa-list"></i> All
+        </button>
+        <button class="filter-btn" data-filter="listed">
+            <i class="fas fa-clock"></i> Listed
+        </button>
+        <button class="filter-btn" data-filter="returned">
+            <i class="fas fa-check-circle"></i> Returned
+        </button>
+        <button class="filter-btn" data-filter="lost">
+            <i class="fas fa-exclamation-triangle"></i> Lost
+        </button>
+        <button class="filter-btn" data-filter="found">
+            <i class="fas fa-box-open"></i> Found
+        </button>
+    </div>
+    <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchItems" placeholder="Search by name, category, or location...">
+    </div>
+</div>
+
+<!-- Skeleton Table -->
+<div id="tableSkeleton">
+    <table class="admin-table">
+        {% for _ in range(5) %}
+        <tr>
+            <td><div class="skeleton skeleton-text" style="width: 40px;"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 70%;"></div></td>
+            <td><div class="skeleton skeleton-badge"></div></td>
+            <td><div class="skeleton skeleton-badge"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 60%;"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 80px;"></div></td>
+            <td><div class="skeleton skeleton-btn"></div></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<!-- Items Table -->
+<div id="itemsTable" style="display: none;">
+<div class="table-wrap">
+<table class="admin-table" id="itemsTableBody">
+    <thead>
+        <tr>
+            <th><i class="fas fa-hashtag"></i> ID</th>
+            <th><i class="fas fa-tag"></i> Item Name</th>
+            <th><i class="fas fa-layer-group"></i> Type</th>
+            <th><i class="fas fa-chart-simple"></i> Status</th>
+            <th><i class="fas fa-location-dot"></i> Location / Pickup</th>
+            <th><i class="fas fa-calendar"></i> Date</th>
+            <th><i class="fas fa-cog"></i> Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+    <tr class="item-row" data-type="{{ item.type }}" data-status="{{ item.status }}">
+        <td data-label="ID">#{{ item.id }}</td>
+        <td data-label="Item Name">
+            <a href="{{ url_for('item.item_detail', item_id=item.id) }}">
+                <strong>{{ item.name }}</strong>
+            </a>
+            {% if item.category %}
+            <br><small style="color: var(--gray-500);"><i class="fas fa-folder"></i> {{ item.category }}</small>
+            {% endif %}
+        </td>
+        <td data-label="Type">
+            <span class="badge badge-{{ item.type }}">
+                <i class="fas {% if item.type == 'lost' %}fa-exclamation-triangle{% else %}fa-box-open{% endif %}"></i>
+                {{ item.type|capitalize }}
+            </span>
+        </td>
+        <td data-label="Status">
+            <span class="badge badge-status-{{ item.status }}">
+                <i class="fas {% if item.status == 'listed' %}fa-clock{% else %}fa-check-circle{% endif %}"></i>
+                {{ item.status|capitalize }}
+            </span>
+        </td>
+        <td data-label="Location">
+            <div><i class="fas fa-map-marker-alt"></i> {{ item.location }}</div>
+            {% if item.pickup_lat and item.pickup_lng %}
+            <div style="margin-top: 0.35rem;">
+                <span class="loc-badge">
+                    <i class="fas fa-map-pin"></i> GPS set
+                </span>
+                <a href="https://www.google.com/maps?q={{ item.pickup_lat }},{{ item.pickup_lng }}" 
+                   target="_blank" 
+                   style="font-size: 0.7rem; margin-left: 0.3rem;"
+                   data-tooltip="Open in Google Maps">
+                    <i class="fas fa-external-link-alt"></i> View map
+                </a>
+            </div>
+            {% endif %}
+            {% if item.pickup_address %}
+            <div style="font-size: 0.7rem; color: var(--gray-500); margin-top: 0.15rem;">
+                <i class="fas fa-address-card"></i> {{ item.pickup_address[:50] }}{% if item.pickup_address|length > 50 %}...{% endif %}
+            </div>
+            {% endif %}
+        </td>
+        <td data-label="Date">{{ item.date_reported }}</td>
+        <td data-label="Actions">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if item.status == 'listed' %}
+                <form method="POST" action="{{ url_for('admin.mark_returned', item_id=item.id) }}" 
+                      onsubmit="return confirm('Mark this item as returned? This will update its status and notify the reporter.')">
+                    <button class="btn btn-secondary" data-tooltip="Mark as returned">
+                        <i class="fas fa-check-double"></i> Returned
+                    </button>
+                </form>
+                {% endif %}
+                <button class="delete-btn" onclick="openDeleteModal({{ item.id }}, '{{ item.name|e }}')" data-tooltip="Delete item">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+            </div>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="7" style="text-align: center; padding: 3rem;">
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No items found</p>
+                <p style="font-size: 0.85rem;">Items will appear here when users report them</p>
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-box">
+        <h3>
+            <i class="fas fa-trash-alt" style="color: var(--danger);"></i>
+            Delete Item
+        </h3>
+        <p>You are about to permanently delete <strong id="deleteItemName"></strong>. This action <strong>cannot be undone</strong>. The reporter will be notified of this action.</p>
+        <form method="POST" id="deleteForm">
+            <label for="deleteReason">
+                <i class="fas fa-comment"></i> Reason for deletion *
+            </label>
+            <textarea name="reason" id="deleteReason" 
+                      placeholder="e.g., Duplicate report, Fake item, Violates guidelines, etc."
+                      required></textarea>
+            <div class="modal-actions">
+                <button type="button" onclick="closeDeleteModal()" style="background: var(--gray-100); border: none; border-radius: 10px; padding: 0.6rem 1.2rem; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="delete-btn" style="padding: 0.6rem 1.2rem; font-size: 0.88rem;">
+                    <i class="fas fa-trash-alt"></i> Delete Permanently
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function openDeleteModal(itemId, itemName) {
+    document.getElementById('deleteItemName').textContent = itemName;
+    document.getElementById('deleteForm').action = `/admin/items/${itemId}/delete`;
+    document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('active');
+    document.getElementById('deleteReason').value = '';
+}
+
+// Close modal on overlay click
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if(e.target === this) closeDeleteModal();
+});
+
+// Skeleton loader reveal
+(function() {
+    var skeleton = document.getElementById('tableSkeleton');
+    var table = document.getElementById('itemsTable');
+    if (skeleton && table) {
+        setTimeout(function() { 
+            skeleton.style.display = 'none'; 
+            table.style.display = 'block'; 
+        }, 500);
+    }
+})();
+
+// Filter functionality
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const filter = this.dataset.filter;
+        
+        // Update active button
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter table rows
+        document.querySelectorAll('.item-row').forEach(row => {
+            if (filter === 'all') {
+                row.style.display = '';
+            } else if (filter === 'lost' || filter === 'found') {
+                row.style.display = row.dataset.type === filter ? '' : 'none';
+            } else {
+                row.style.display = row.dataset.status === filter ? '' : 'none';
+            }
+        });
+    });
+});
+
+// Search functionality
+document.getElementById('searchItems')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    
+    document.querySelectorAll('.item-row').forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const currentFilter = document.querySelector('.filter-btn.active').dataset.filter;
+        const matchesFilter = currentFilter === 'all' || 
+                              (currentFilter === 'lost' || currentFilter === 'found' ? 
+                               row.dataset.type === currentFilter : 
+                               row.dataset.status === currentFilter);
+        const matchesSearch = text.includes(searchTerm);
+        
+        row.style.display = (matchesFilter && matchesSearch) ? '' : 'none';
+    });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Press '1' for all, '2' for listed, '3' for returned, '4' for lost, '5' for found
+    const shortcuts = {
+        '1': 'all',
+        '2': 'listed',
+        '3': 'returned',
+        '4': 'lost',
+        '5': 'found'
+    };
+    
+    if (shortcuts[e.key]) {
+        const btn = document.querySelector(`.filter-btn[data-filter="${shortcuts[e.key]}"]`);
+        if (btn) btn.click();
+    }
+    
+    // Press '/' to focus search
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        document.getElementById('searchItems')?.focus();
+    }
+});
+
+// Add tooltips to action buttons
+document.querySelectorAll('[data-tooltip]').forEach(el => {
+    el.setAttribute('title', el.dataset.tooltip);
+});
+
+// Auto-hide flash messages
+setTimeout(() => {
+    document.querySelectorAll('.flash').forEach(flash => {
+        flash.style.opacity = '0';
+        flash.style.transform = 'translateX(20px)';
+        setTimeout(() => flash.remove(), 300);
+    });
+}, 5000);
+</script>
+{% endblock %}

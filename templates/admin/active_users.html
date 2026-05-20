@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+{% block title %}Active Users | NEMSU Admin{% endblock %}
+{% block extra_css %}
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+/* Header */
+.active-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.active-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--gray-800);
+}
+
+.active-header h2 i {
+    color: var(--primary);
+}
+
+.active-header p {
+    color: var(--gray-600);
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+}
+
+/* Live Badge */
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid #bbf7d0;
+    animation: pulse 2s infinite;
+}
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+}
+
+/* Refresh Button */
+.refresh-btn {
+    background: var(--gray-100);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--gray-700);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.refresh-btn:hover {
+    background: var(--gray-200);
+    transform: translateY(-1px);
+}
+
+/* Summary Bar */
+.summary-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-chip {
+    background: white;
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.summary-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.summary-chip .val {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    line-height: 1;
+}
+
+.summary-chip .lbl {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+/* Filter Bar */
+.filter-bar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    border: 1.5px solid var(--gray-200);
+    background: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--gray-600);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* Users Grid */
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+}
+
+.user-active-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+}
+
+.user-active-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), transparent);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.user-active-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-xl);
+}
+
+.user-active-card:hover::before {
+    transform: scaleX(1);
+}
+
+.user-active-card .avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 3px solid var(--gray-200);
+    background: linear-gradient(135deg, var(--gray-100), white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    transition: transform 0.3s ease;
+}
+
+.user-active-card:hover .avatar {
+    transform: scale(1.05);
+}
+
+.user-active-card .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-active-card .info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-active-card .name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--gray-800);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-active-card .email {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.25rem;
+}
+
+.user-active-card .meta {
+    font-size: 0.7rem;
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.user-active-card .course-badge {
+    background: var(--gray-100);
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+/* Online Status Dots */
+.online-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.online-dot.now {
+    background: var(--success);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    animation: pulse 1.5s infinite;
+}
+
+.online-dot.recent {
+    background: var(--warning);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+/* Refresh Info */
+.refresh-info {
+    font-size: 0.7rem;
+    color: var(--gray-500);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 20px;
+    border: 1px solid var(--gray-200);
+}
+
+.empty-state .icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--gray-600);
+    margin: 0.5rem 0;
+}
+
+/* Loading State */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    display: none;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--gray-200);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .users-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-bar {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-bar {
+        justify-content: center;
+    }
+    
+    .active-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .user-active-card {
+        padding: 1rem;
+    }
+    
+    .user-active-card .avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 1.5rem;
+    }
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--gray-900);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    animation: slideInUp 0.3s ease;
+    z-index: 1000;
+}
+
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.toast.info { background: var(--primary); }
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Tooltips */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background: var(--gray-800);
+    color: white;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+    margin-bottom: 0.5rem;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="active-header">
+    <div>
+        <h2><i class="fas fa-users"></i> Active Users</h2>
+        <p>
+            <i class="fas fa-chart-line"></i>
+            Showing users who have been active in the last 30 minutes
+            <span class="refresh-info" id="lastRefresh">
+                <i class="fas fa-clock"></i>
+            </span>
+        </p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="live-badge">
+            <span class="pulse-dot"></span>
+            <i class="fas fa-circle"></i> Live
+        </span>
+        <button onclick="refreshPage()" class="refresh-btn" data-tooltip="Refresh user list">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="summary-bar">
+    <div class="summary-chip">
+        <div class="val" style="color: var(--success);">
+            <i class="fas fa-circle"></i> {{ users_5min|length }}
+        </div>
+        <div class="lbl">
+            <i class="fas fa-bolt"></i> Online Now (5 min)
+        </div>
+    </div>
+    <div class="summary-chip">
+        <div class="val" style="color: var(--warning);">
+            <i class="fas fa-clock"></i> {{ users_30min|length }}
+        </div>
+        <div class="lbl">
+            <i class="fas fa-history"></i> Active (30 min)
+        </div>
+    </div>
+    <div class="summary-chip">
+        <div class="val">
+            <i class="fas fa-user-friends"></i> {{ total_users }}
+        </div>
+        <div class="lbl">
+            <i class="fas fa-database"></i> Total Registered
+        </div>
+    </div>
+</div>
+
+<!-- Filter Buttons -->
+<div class="filter-bar">
+    <button class="filter-btn active" onclick="showGroup('all', this)">
+        <i class="fas fa-globe"></i> All Active ({{ users_30min|length }})
+    </button>
+    <button class="filter-btn" onclick="showGroup('now', this)">
+        <i class="fas fa-circle" style="color: var(--success);"></i> Online Now ({{ users_5min|length }})
+    </button>
+    <button class="filter-btn" onclick="showGroup('recent', this)">
+        <i class="fas fa-clock" style="color: var(--warning);"></i> Recent ({{ users_30min|length - users_5min|length }})
+    </button>
+</div>
+
+<!-- Users Grid -->
+{% if users_30min %}
+<div class="users-grid" id="usersGrid">
+    {% for u in users_30min %}
+    {% set is_now = u.id in now_ids %}
+    <a href="{{ url_for('admin.view_user', user_id=u.id) }}"
+       class="user-active-card" 
+       data-group="{{ 'now' if is_now else 'recent' }}"
+       data-user-id="{{ u.id }}">
+        <div class="avatar">
+            {% if u.profile_picture and u.profile_pic_status == 'approved' %}
+                {% if u.profile_picture and u.profile_picture.startswith('data:') %}
+                    <img src="{{ u.profile_picture }}" alt="{{ u.full_name }}" />
+                {% else %}
+                    <img src="{{ url_for('static', filename='uploads/profiles/' ~ u.profile_picture) }}" 
+                         alt="{{ u.full_name }}"
+                         onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-circle\'></i>'" />
+                {% endif %}
+            {% else %}
+                <i class="fas fa-user-circle"></i>
+            {% endif %}
+        </div>
+        <div class="info">
+            <div class="name">
+                <i class="fas fa-user"></i> {{ u.full_name }}
+            </div>
+            <div class="email">
+                <i class="fas fa-envelope"></i> {{ u.email }}
+            </div>
+            <div class="meta">
+                {% if u.course %}
+                <span class="course-badge">
+                    <i class="fas fa-graduation-cap"></i> {{ u.course }}
+                    {% if u.year_level %} · {{ u.year_level }}{% endif %}
+                </span>
+                {% endif %}
+                <span>
+                    <i class="fas fa-clock"></i> Last active: 
+                    <strong>{{ u.last_active[11:16] if u.last_active else '—' }}</strong>
+                </span>
+            </div>
+        </div>
+        <div class="online-dot {{ 'now' if is_now else 'recent' }}" 
+             title="{{ 'Online now' if is_now else 'Recently active (last 30 minutes)' }}">
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="icon">😴</span>
+    <p style="font-weight: 600; color: var(--gray-700); margin: 0 0 0.3rem;">
+        <i class="fas fa-bed"></i> No active users right now
+    </p>
+    <p style="font-size: 0.85rem; margin: 0;">
+        Users who log in will appear here within 30 minutes
+    </p>
+</div>
+{% endif %}
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
+
+<script>
+let autoRefreshInterval;
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle')}"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideInUp 0.3s reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function showGroup(group, btn) {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Filter cards
+    document.querySelectorAll('.user-active-card').forEach(card => {
+        if (group === 'all' || card.dataset.group === group) {
+            card.style.display = '';
+            card.style.animation = 'fadeInUp 0.3s ease';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function refreshPage(showToastMessage = true) {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('active');
+    
+    setTimeout(() => {
+        location.reload();
+    }, 300);
+}
+
+function updateLastRefreshTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
+    const refreshInfo = document.getElementById('lastRefresh');
+    if (refreshInfo) {
+        refreshInfo.innerHTML = `<i class="fas fa-sync-alt"></i> Last updated: ${timeString}`;
+    }
+}
+
+// Start auto-refresh counter
+let secondsUntilRefresh = 60;
+function startAutoRefreshCounter() {
+    const refreshInfo = document.getElementById('lastRefresh');
+    if (!refreshInfo) return;
+    
+    setInterval(() => {
+        secondsUntilRefresh--;
+        if (secondsUntilRefresh <= 0) {
+            secondsUntilRefresh = 60;
+            refreshPage(false);
+        } else {
+            const countdown = refreshInfo.querySelector('.countdown');
+            if (countdown) {
+                countdown.textContent = secondsUntilRefresh;
+            } else {
+                refreshInfo.innerHTML += `<span class="countdown" style="margin-left: 0.5rem;">(auto-refresh in ${secondsUntilRefresh}s)</span>`;
+            }
+        }
+    }, 1000);
+}
+
+// Initialize
+updateLastRefreshTime();
+startAutoRefreshCounter();
+
+// Add keyboard shortcut (R to refresh)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'r' || e.key === 'R') {
+        if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            refreshPage(true);
+        }
+    }
+});
+
+// Add hover effect animation to cards
+document.querySelectorAll('.user-active-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px)';
+    });
+    card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+    });
+});
+
+// Real-time user count animation
+function animateValue(element, start, end, duration) {
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+    
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= end) {
+            clearInterval(timer);
+            current = end;
+        }
+        element.textContent = Math.round(current);
+    }, 16);
+}
+
+// Animate stats on load
+document.addEventListener('DOMContentLoaded', function() {
+    const stats = document.querySelectorAll('.summary-chip .val');
+    stats.forEach(stat => {
+        const finalValue = parseInt(stat.textContent.match(/\d+/)[0]);
+        stat.textContent = '0';
+        animateValue(stat, 0, finalValue, 1000);
+    });
+});
+
+// Connection status indicator
+window.addEventListener('online', () => showToast('Connection restored', 'success'));
+window.addEventListener('offline', () => showToast('Connection lost', 'error'));
+</script>
+{% endblock %}

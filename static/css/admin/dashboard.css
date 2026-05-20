@@ -1,0 +1,33 @@
+/*
+ * static/css/admin/dashboard.css - Admin Dashboard Page Styles
+ * =============================================================
+ * Additional styles specific to the admin overview dashboard.
+ * Inherits all shared styles from base.css.
+ * Focuses on the stats grid visual treatment for the admin role.
+ */
+
+/* ── Admin Dashboard Header Accent ──────────────────────────────────── */
+/* Adds a subtle top border to distinguish the admin dashboard visually */
+.page-header h2::before {
+    content:      "🛡️ ";
+    font-size:    1.2rem;
+}
+
+/* ── Stat Cards — Admin Variant ──────────────────────────────────────── */
+/* Slightly larger padding and stronger shadow for admin card emphasis */
+.stats-grid .stat-card {
+    padding:    1.5rem 1.75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.10);
+}
+
+/* Larger stat value numbers on admin cards */
+.stats-grid .stat-value {
+    font-size: 2.5rem;
+}
+
+/* ── Quick Actions Section ───────────────────────────────────────────── */
+/* Adds a top divider above the quick actions section */
+.quick-actions {
+    border-top: 2px solid var(--color-border);
+    padding-top: 1.5rem;
+}

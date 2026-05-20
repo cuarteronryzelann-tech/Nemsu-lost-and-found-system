@@ -1,0 +1,391 @@
+"""
+models/database.py - Database Connection Manager
+=================================================
+Supports two modes:
+  1. TURSO (cloud SQLite, free) — set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
+  2. Local SQLite (fallback)    — used when env vars are not set
+
+Vercel / serverless strategy:
+  - On Vercel, every request is a fresh process. Opening a new Turso
+    connection + running DDL on every cold start exhausts the free-tier
+    connection concurrency limit immediately.
+  - Solution: set SKIP_INIT_DB=1 in your Vercel environment variables
+    after the first deployment. The schema is already in Turso; it never
+    needs to be re-created.
+  - Connections are created fresh per request (libsql handles its own
+    internal pooling over HTTP/2); we never hold a connection open between
+    requests.
+"""
+
+import os
+import sqlite3
+from config import Config
+
+TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL", "").strip()
+TURSO_AUTH_TOKEN   = os.environ.get("TURSO_AUTH_TOKEN",   "").strip()
+USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
+
+# Set SKIP_INIT_DB=1 in Vercel env vars after first deploy.
+# This skips the schema DDL entirely on cold start — the schema already exists.
+SKIP_INIT_DB = os.environ.get("SKIP_INIT_DB", "").strip() in ("1", "true", "yes")
+
+
+# ---------------------------------------------------------------------------
+# Connection factory  — one fresh connection per request, closed after use
+# ---------------------------------------------------------------------------
+
+def get_connection():
+    if USE_TURSO:
+        import libsql_experimental as libsql
+        conn = libsql.connect(
+            database=TURSO_DATABASE_URL,
+            auth_token=TURSO_AUTH_TOKEN,
+        )
+        return TursoConnection(conn)
+    conn = sqlite3.connect(Config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# ---------------------------------------------------------------------------
+# Turso wrapper — sqlite3-compatible interface
+# ---------------------------------------------------------------------------
+
+class TursoConnection:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self):
+        return TursoCursor(self._conn.cursor())
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        try:
+            self._conn.close()
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not exc_type:
+            try:
+                self._conn.commit()
+            except Exception:
+                pass
+        self.close()
+
+
+class TursoCursor:
+    def __init__(self, cursor):
+        self._cur = cursor
+        self.lastrowid = None
+
+    @property
+    def description(self):
+        return self._cur.description
+
+    @property
+    def rowcount(self):
+        return getattr(self._cur, "rowcount", -1)
+
+    def execute(self, sql, params=None):
+        try:
+            if params is not None:
+                self._cur.execute(sql, tuple(params))
+            else:
+                self._cur.execute(sql)
+            self.lastrowid = getattr(self._cur, "lastrowid", None)
+        except Exception as e:
+            raise RuntimeError(f"Turso DB error: {e}") from e
+        return self
+
+    def executemany(self, sql, seq_of_params):
+        try:
+            self._cur.executemany(sql, [tuple(p) for p in seq_of_params])
+        except Exception as e:
+            raise RuntimeError(f"Turso DB error: {e}") from e
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        if row is None:
+            return None
+        return TursoRow(row, self._cur.description)
+
+    def fetchall(self):
+        rows = self._cur.fetchall()
+        desc = self._cur.description
+        return [TursoRow(r, desc) for r in rows]
+
+    def __iter__(self):
+        desc = self._cur.description
+        for row in self._cur:
+            yield TursoRow(row, desc)
+
+
+class TursoRow:
+    def __init__(self, raw_row, description):
+        self._values = list(raw_row)
+        if description:
+            self._keys = [col[0] for col in description]
+            self._map  = dict(zip(self._keys, self._values))
+        else:
+            self._keys = []
+            self._map  = {}
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return self._map[key]
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def keys(self):
+        return self._keys
+
+    def get(self, key, default=None):
+        return self._map.get(key, default)
+
+    def __contains__(self, key):
+        return key in self._map
+
+
+# ---------------------------------------------------------------------------
+# Schema init — skipped entirely when SKIP_INIT_DB=1
+# ---------------------------------------------------------------------------
+
+def init_db():
+    """
+    Run DDL to create tables if they don't exist.
+
+    IMPORTANT for Vercel:
+      After your first successful deployment, add SKIP_INIT_DB=1 to your
+      Vercel project environment variables and redeploy. This eliminates
+      the cold-start Turso connection entirely, solving the concurrency error.
+
+    The schema lives in Turso permanently — it never needs re-creation.
+    """
+    if SKIP_INIT_DB:
+        return  # Schema already exists — skip entirely
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        _init_schema(cursor)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _init_schema(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id         TEXT UNIQUE NOT NULL,
+            full_name          TEXT NOT NULL,
+            email              TEXT UNIQUE NOT NULL,
+            role               TEXT NOT NULL DEFAULT 'user',
+            phone              TEXT,
+            course             TEXT,
+            year_level         TEXT,
+            profile_picture    TEXT,
+            profile_pic_status TEXT DEFAULT 'none',
+            is_registered      INTEGER NOT NULL DEFAULT 0,
+            last_active        TEXT,
+            created_at         TEXT,
+            disable_until      TEXT,
+            is_online          INTEGER DEFAULT 0
+        )
+    """)
+    _migrate(cursor, "users", [
+        ("phone",              "TEXT"),
+        ("course",             "TEXT"),
+        ("year_level",         "TEXT"),
+        ("is_registered",      "INTEGER NOT NULL DEFAULT 0"),
+        ("profile_picture",    "TEXT"),
+        ("profile_pic_status", "TEXT DEFAULT 'none'"),
+        ("last_active",        "TEXT"),
+        ("created_at",         "TEXT"),
+        ("disable_until",      "TEXT"),
+        ("is_online",          "INTEGER DEFAULT 0"),
+    ])
+
+    import hashlib
+    from datetime import datetime
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    admin_sid = hashlib.sha256(b"admin").hexdigest()
+    cursor.execute("""
+        INSERT INTO users (student_id, full_name, email, role, is_registered, last_active, created_at)
+        VALUES (?, 'Administrator', 'admin@nemsu.edu.ph', 'admin', 1, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET role = 'admin', is_registered = 1
+    """, (admin_sid, now, now))
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            name           TEXT NOT NULL,
+            description    TEXT,
+            category       TEXT,
+            type           TEXT NOT NULL,
+            status         TEXT DEFAULT 'pending',
+            location       TEXT NOT NULL,
+            pickup_lat     REAL,
+            pickup_lng     REAL,
+            pickup_address TEXT,
+            date_reported  TEXT NOT NULL,
+            time_found     TEXT,
+            image_filename TEXT,
+            reported_by    INTEGER,
+            approved_by    INTEGER,
+            created_at     TEXT,
+            FOREIGN KEY (reported_by) REFERENCES users(id),
+            FOREIGN KEY (approved_by) REFERENCES users(id)
+        )
+    """)
+    _migrate(cursor, "items", [
+        ("image_filename", "TEXT"),
+        ("pickup_lat",     "REAL"),
+        ("pickup_lng",     "REAL"),
+        ("pickup_address", "TEXT"),
+    ])
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS claims (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id           INTEGER NOT NULL,
+            claimant_id       INTEGER NOT NULL,
+            student_id_text   TEXT NOT NULL,
+            full_name_text    TEXT NOT NULL,
+            last_location     TEXT NOT NULL,
+            status            TEXT DEFAULT 'approved',
+            pickup_location   TEXT,
+            reviewed_by       INTEGER,
+            confirmed_by_user INTEGER DEFAULT 0,
+            created_at        TEXT,
+            FOREIGN KEY (item_id)     REFERENCES items(id),
+            FOREIGN KEY (claimant_id) REFERENCES users(id),
+            FOREIGN KEY (reviewed_by) REFERENCES users(id)
+        )
+    """)
+    _migrate(cursor, "claims", [
+        ("confirmed_by_user", "INTEGER DEFAULT 0"),
+        ("pickup_location",   "TEXT"),
+    ])
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER,
+            action     TEXT NOT NULL,
+            details    TEXT,
+            created_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            message    TEXT NOT NULL,
+            type       TEXT DEFAULT 'info',
+            link       TEXT,
+            is_read    INTEGER DEFAULT 0,
+            created_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+    _migrate(cursor, "notifications", [
+        ("link",    "TEXT"),
+        ("is_read", "INTEGER DEFAULT 0"),
+        ("type",    "TEXT DEFAULT 'info'"),
+    ])
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user1_id   INTEGER NOT NULL,
+            user2_id   INTEGER NOT NULL,
+            item_id    INTEGER,
+            created_at TEXT,
+            FOREIGN KEY (user1_id) REFERENCES users(id),
+            FOREIGN KEY (user2_id) REFERENCES users(id),
+            FOREIGN KEY (item_id)  REFERENCES items(id),
+            UNIQUE(user1_id, user2_id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            sender_id       INTEGER NOT NULL,
+            content         TEXT,
+            image_filename  TEXT,
+            is_read         INTEGER DEFAULT 0,
+            created_at      TEXT,
+            FOREIGN KEY (conversation_id) REFERENCES conversations(id),
+            FOREIGN KEY (sender_id)       REFERENCES users(id)
+        )
+    """)
+    _migrate(cursor, "messages", [
+        ("image_filename", "TEXT"),
+    ])
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reports (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id      INTEGER NOT NULL,
+            reported_user_id INTEGER,
+            reported_item_id INTEGER,
+            reason           TEXT NOT NULL,
+            details          TEXT,
+            status           TEXT DEFAULT 'pending',
+            reviewed_by      INTEGER,
+            reviewed_at      TEXT,
+            admin_note       TEXT,
+            created_at       TEXT,
+            FOREIGN KEY (reporter_id)      REFERENCES users(id),
+            FOREIGN KEY (reported_user_id) REFERENCES users(id),
+            FOREIGN KEY (reported_item_id) REFERENCES items(id),
+            FOREIGN KEY (reviewed_by)      REFERENCES users(id)
+        )
+    """)
+
+    _create_indexes(cursor)
+
+
+def _create_indexes(cursor):
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_messages_conv_id   ON messages(conversation_id)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_is_read   ON messages(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_created   ON messages(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_conversations_u1   ON conversations(user1_id)",
+        "CREATE INDEX IF NOT EXISTS idx_conversations_u2   ON conversations(user2_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_uid  ON notifications(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_items_status       ON items(status)",
+        "CREATE INDEX IF NOT EXISTS idx_items_type         ON items(type)",
+        "CREATE INDEX IF NOT EXISTS idx_items_reported_by  ON items(reported_by)",
+        "CREATE INDEX IF NOT EXISTS idx_claims_item_id     ON claims(item_id)",
+        "CREATE INDEX IF NOT EXISTS idx_claims_claimant    ON claims(claimant_id)",
+        "CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email)",
+    ]
+    for idx_sql in indexes:
+        try:
+            cursor.execute(idx_sql)
+        except Exception:
+            pass
+
+
+def _migrate(cursor, table, columns):
+    for col, definition in columns:
+        try:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {definition}")
+        except Exception:
+            pass

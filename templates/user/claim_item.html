@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+<!--
+    templates/user/claim_item.html - Claim an Item Form
+    ====================================================
+    Allows a student to submit a claim for a specific found item.
+    The student provides:
+      - Their student ID (for admin identity verification)
+      - Their full name (must match school records)
+      - Where the item was last placed/lost (must match item location)
+    Admin reviews and approves or denies the claim.
+-->
+
+{% block title %}Claim Item | NEMSU Lost &amp; Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user/my_claims.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🔖 Claim This Item</h2>
+    <p>Fill in your details below to instantly claim this item. You'll be able to chat with the finder to arrange pickup.</p>
+</div>
+
+<!-- Item Summary Card -->
+<div class="item-summary-card">
+    <h3>{{ item.name }}</h3>
+    <p><strong>Category:</strong> {{ item.category or '—' }}</p>
+    <p><strong>Found At:</strong> {{ item.location }}</p>
+    <p><strong>Date Reported:</strong> {{ item.date_reported }}</p>
+    {% if item.description %}
+    <p><strong>Description:</strong> {{ item.description }}</p>
+    {% endif %}
+</div>
+
+<!-- Claim Form -->
+<div class="form-container">
+    <form method="POST"
+          action="{{ url_for('user.claim_item', item_id=item.id) }}"
+          class="report-form">
+
+        <!-- Student ID -->
+        <div class="form-group">
+            <label for="student_id_text">Your Student ID <span class="required">*</span></label>
+            <input
+                type="text"
+                id="student_id_text"
+                name="student_id_text"
+                placeholder="e.g., 2021-00123"
+                class="input-field"
+                required
+            />
+            <small class="field-hint">
+                Enter your student ID exactly as it appears on your school records.
+            </small>
+        </div>
+
+        <!-- Full Name -->
+        <div class="form-group">
+            <label for="full_name_text">Your Full Name <span class="required">*</span></label>
+            <input
+                type="text"
+                id="full_name_text"
+                name="full_name_text"
+                placeholder="e.g., Juan Dela Cruz"
+                class="input-field"
+                required
+            />
+            <small class="field-hint">
+                Enter your name exactly as registered with the school.
+            </small>
+        </div>
+
+        <!-- Last Known Location -->
+        <div class="form-group">
+            <label for="last_location">
+                Where Did You Last Place or Lose This Item? <span class="required">*</span>
+            </label>
+            <input
+                type="text"
+                id="last_location"
+                name="last_location"
+                placeholder="e.g., Library Table 3, Canteen Chair, Room 204"
+                class="input-field"
+                required
+            />
+            <small class="field-hint">
+                This must match the item's recorded location for your claim to be approved.
+            </small>
+        </div>
+
+        <!-- Verification Notice -->
+        <div class="info-box">
+            ⚠️ Make sure your student ID and full name are correct — the finder can verify your identity.
+            Providing false information may result in your claim being denied.
+        </div>
+
+        <!-- Submit -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-full">✅ Claim This Item</button>
+            <a href="{{ url_for('user.search_items') }}" class="btn btn-outline btn-full">Cancel</a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

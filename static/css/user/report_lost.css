@@ -1,0 +1,28 @@
+/*
+ * static/css/user/report_lost.css - Report Lost Item Page Styles
+ * ===============================================================
+ * Page-specific styles for the report lost item form.
+ * Inherits all form styles from base.css.
+ * Adds a warning-toned accent to distinguish this page from report found.
+ */
+
+/* ── Page header warning accent ──────────────────────────────────────── */
+.page-header h2 {
+    color: var(--color-warning);  /* Orange/amber tone for "lost" context */
+}
+
+/* ── Form container warm tint ────────────────────────────────────────── */
+/* Subtle left border gives the form a visual identity for "lost" items */
+.form-container {
+    border-left: 4px solid var(--color-warning);
+}
+
+/* ── Submit button override ───────────────────────────────────────────── */
+/* Ensure the submit button matches the warning color theme */
+.btn-warning {
+    background: var(--color-warning);
+    color:      #fff;
+}
+.btn-warning:hover {
+    background: #a16207;
+}

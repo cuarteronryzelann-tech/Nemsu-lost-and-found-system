@@ -1,0 +1,748 @@
+{% extends "base.html" %}
+{% block title %}Notifications | NEMSU Lost & Found{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+.notif-page { 
+    max-width: 800px; 
+    margin: 0 auto;
+    padding: 1rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+/* Header Styles */
+.notif-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.notif-page-header h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--gray-900);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.notif-page-header h2 i {
+    color: var(--primary);
+    font-size: 1.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Button Styles */
+.btn-action {
+    background: white;
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-action:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary-action {
+    background: var(--primary);
+    color: white;
+    border: none;
+}
+
+.btn-primary-action:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-danger-action {
+    background: white;
+    color: var(--error);
+    border-color: var(--error);
+}
+
+.btn-danger-action:hover {
+    background: var(--error);
+    color: white;
+}
+
+/* Notifications Card */
+.notif-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+/* Notification Row */
+.notif-row {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    position: relative;
+    animation: slideInRight 0.3s ease;
+}
+
+.notif-row:last-child {
+    border-bottom: none;
+}
+
+.notif-row.unread {
+    background: linear-gradient(90deg, #eff6ff 0%, white 100%);
+    position: relative;
+}
+
+.notif-row.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary);
+}
+
+.notif-row:hover {
+    background: var(--gray-50);
+    transform: translateX(5px);
+}
+
+/* Status Dot */
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 0.3rem;
+    transition: all 0.3s ease;
+}
+
+.dot.unread {
+    background: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.2);
+    animation: pulse 2s infinite;
+}
+
+.dot.read {
+    background: var(--gray-300);
+}
+
+/* Notification Icon */
+.notif-icon {
+    font-size: 1.5rem;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* Notification Body */
+.notif-body {
+    flex: 1;
+}
+
+.notif-msg {
+    font-size: 0.95rem;
+    color: var(--gray-800);
+    margin: 0 0 0.5rem;
+    line-height: 1.4;
+}
+
+.notif-msg a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.notif-msg a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+/* Type Badge */
+.notif-type-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    margin-left: 0.5rem;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.type-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.type-warning {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.type-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.type-error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Timestamp */
+.notif-ts {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.notif-ts i {
+    font-size: 0.7rem;
+}
+
+/* Dismiss Button */
+.dismiss-btn {
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dismiss-btn:hover {
+    color: var(--error);
+    background: #fee2e2;
+    transform: scale(1.1);
+}
+
+/* Empty State */
+.empty-notifs {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray-500);
+}
+
+.empty-notifs i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--gray-400);
+}
+
+.empty-notifs p {
+    margin: 0.5rem 0;
+    font-size: 1rem;
+}
+
+.empty-notifs .subtext {
+    font-size: 0.85rem;
+    color: var(--gray-400);
+}
+
+/* Back Link */
+.back-link {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.back-link a {
+    color: var(--gray-600);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.back-link a:hover {
+    color: var(--primary);
+    transform: translateX(-5px);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(26, 86, 219, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(26, 86, 219, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(26, 86, 219, 0);
+    }
+}
+
+/* Loading State */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+    .notif-page {
+        padding: 0.75rem;
+    }
+    
+    .notif-page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .notif-page-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .header-actions {
+        justify-content: stretch;
+    }
+    
+    .btn-action {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .notif-row {
+        padding: 1rem;
+        gap: 0.75rem;
+    }
+    
+    .notif-icon {
+        font-size: 1.25rem;
+        min-width: 32px;
+    }
+    
+    .notif-msg {
+        font-size: 0.85rem;
+    }
+    
+    .notif-type-badge {
+        font-size: 0.6rem;
+        margin-top: 0.25rem;
+        display: inline-block;
+    }
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--gray-900);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    animation: slideInUp 0.3s ease;
+    z-index: 1000;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.toast.success { background: var(--success); }
+.toast.error { background: var(--error); }
+.toast.info { background: var(--primary); }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="notif-page">
+    <div class="notif-page-header">
+        <h2>
+            <i class="fas fa-bell"></i>
+            Notifications
+            {% if unread_count > 0 %}
+            <span style="font-size: 0.8rem; background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 20px;">
+                {{ unread_count }} new
+            </span>
+            {% endif %}
+        </h2>
+
+        <div class="header-actions">
+            {% if unread_count > 0 %}
+            <button class="btn-action btn-primary-action" id="markAllBtn" onclick="markAll()">
+                <i class="fas fa-check-double"></i> Mark all read
+            </button>
+            {% endif %}
+
+            {% if notifications %}
+            <button class="btn-action btn-danger-action" id="clearAllBtn" onclick="clearAll()">
+                <i class="fas fa-trash-alt"></i> Clear All
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if notifications %}
+    <div class="notif-card" id="notifCard">
+        {% for n in notifications %}
+        {% set icon = 'fa-check-circle' if n.type=='success' else ('fa-exclamation-triangle' if n.type=='warning' else ('fa-times-circle' if n.type=='error' else 'fa-info-circle')) %}
+        {% set icon_color = '#10b981' if n.type=='success' else ('#f59e0b' if n.type=='warning' else ('#ef4444' if n.type=='error' else '#3b82f6')) %}
+
+        <div class="notif-row {{ 'unread' if not n.is_read else '' }}" id="notif-{{ n.id }}" data-id="{{ n.id }}">
+            <div class="dot {{ 'unread' if not n.is_read else 'read' }}"></div>
+
+            <div class="notif-icon" style="color: {{ icon_color }}">
+                <i class="fas {{ icon }}"></i>
+            </div>
+
+            <div class="notif-body">
+                <p class="notif-msg">
+                    {% if n.link %}
+                    <a href="{{ n.link }}">
+                        {{ n.message }}
+                    </a>
+                    {% else %}
+                        {{ n.message }}
+                    {% endif %}
+                    <span class="notif-type-badge type-{{ n.type }}">
+                        <i class="fas {{ icon }}"></i> {{ n.type | upper }}
+                    </span>
+                </p>
+
+                <span class="notif-ts">
+                    <i class="far fa-clock"></i>
+                    {{ n.created_at[:16] if n.created_at else '' }}
+                </span>
+            </div>
+
+            <button class="dismiss-btn" onclick="dismissNotif({{ n.id }})" title="Dismiss notification">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="notif-card">
+        <div class="empty-notifs">
+            <i class="fas fa-bell-slash"></i>
+            <p>No notifications yet</p>
+            <p class="subtext">When you receive notifications, they'll appear here</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="back-link">
+        <a href="{{ url_for('user.dashboard') }}">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle')}"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideInUp 0.3s reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function markAll() {
+    const markAllBtn = document.getElementById('markAllBtn');
+    const originalText = markAllBtn.innerHTML;
+    markAllBtn.innerHTML = '<span class="loading-spinner"></span> Loading...';
+    markAllBtn.disabled = true;
+    
+    fetch("{{ url_for('user.mark_notifications_read') }}", { 
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelectorAll('.notif-row').forEach(row => {
+                row.classList.remove('unread');
+            });
+            
+            document.querySelectorAll('.dot').forEach(dot => {
+                dot.classList.remove('unread');
+                dot.classList.add('read');
+            });
+            
+            const btn = document.getElementById('markAllBtn');
+            if (btn) btn.remove();
+            
+            const badge = document.getElementById('notifBadge');
+            if (badge) {
+                badge.textContent = '0';
+                if (badge.parentElement) badge.parentElement.style.display = 'none';
+            }
+            
+            // Update header badge
+            const headerBadge = document.querySelector('.notif-page-header h2 span');
+            if (headerBadge) headerBadge.remove();
+            
+            showToast('All notifications marked as read', 'success');
+        } else {
+            showToast('Failed to mark notifications as read', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred. Please try again.', 'error');
+    })
+    .finally(() => {
+        markAllBtn.innerHTML = originalText;
+        markAllBtn.disabled = false;
+    });
+}
+
+function dismissNotif(id) {
+    const row = document.getElementById('notif-' + id);
+    const dismissBtn = row.querySelector('.dismiss-btn');
+    const originalIcon = dismissBtn.innerHTML;
+    dismissBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    dismissBtn.disabled = true;
+    
+    fetch(`/user/notifications/${id}/delete`, { 
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) {
+            row.style.animation = 'slideInRight 0.3s reverse';
+            setTimeout(() => {
+                row.remove();
+                checkEmpty();
+                showToast('Notification dismissed', 'success');
+                
+                // Update unread count if needed
+                if (row.classList.contains('unread')) {
+                    const unreadCount = document.querySelectorAll('.notif-row.unread').length;
+                    const headerBadge = document.querySelector('.notif-page-header h2 span');
+                    if (unreadCount === 0 && headerBadge) {
+                        headerBadge.remove();
+                    } else if (headerBadge && unreadCount > 0) {
+                        headerBadge.textContent = `${unreadCount} new`;
+                    }
+                }
+            }, 300);
+        } else {
+            showToast('Failed to dismiss notification', 'error');
+            dismissBtn.innerHTML = originalIcon;
+            dismissBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred. Please try again.', 'error');
+        dismissBtn.innerHTML = originalIcon;
+        dismissBtn.disabled = false;
+    });
+}
+
+function clearAll() {
+    if (!confirm('⚠️ Are you sure you want to clear all notifications? This action cannot be undone.')) return;
+    
+    const clearBtn = document.getElementById('clearAllBtn');
+    const originalText = clearBtn.innerHTML;
+    clearBtn.innerHTML = '<span class="loading-spinner"></span> Clearing...';
+    clearBtn.disabled = true;
+    
+    fetch("{{ url_for('user.clear_all_notifications') }}", { 
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) {
+            const card = document.getElementById('notifCard');
+            card.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                card.innerHTML = `
+                    <div class="empty-notifs">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>No notifications</p>
+                        <p class="subtext">All notifications have been cleared</p>
+                    </div>
+                `;
+                card.style.animation = 'fadeInUp 0.5s ease';
+            }, 300);
+            
+            document.getElementById('markAllBtn')?.remove();
+            document.getElementById('clearAllBtn')?.remove();
+            
+            const badge = document.getElementById('notifBadge');
+            if (badge) {
+                badge.textContent = '0';
+                if (badge.parentElement) badge.parentElement.style.display = 'none';
+            }
+            
+            const headerBadge = document.querySelector('.notif-page-header h2 span');
+            if (headerBadge) headerBadge.remove();
+            
+            showToast('All notifications cleared', 'success');
+        } else {
+            showToast('Failed to clear notifications', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred. Please try again.', 'error');
+    })
+    .finally(() => {
+        clearBtn.innerHTML = originalText;
+        clearBtn.disabled = false;
+    });
+}
+
+function checkEmpty() {
+    const rows = document.querySelectorAll('.notif-row');
+    if (rows.length === 0) {
+        const card = document.getElementById('notifCard');
+        card.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            card.innerHTML = `
+                <div class="empty-notifs">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No notifications</p>
+                    <p class="subtext">When you receive notifications, they'll appear here</p>
+                </div>
+            `;
+            card.style.animation = 'fadeInUp 0.5s ease';
+            
+            const markAllBtn = document.getElementById('markAllBtn');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            if (markAllBtn) markAllBtn.remove();
+            if (clearAllBtn) clearAllBtn.remove();
+        }, 300);
+    }
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Press 'M' to mark all as read
+    if (e.key === 'm' || e.key === 'M') {
+        if (document.getElementById('markAllBtn')) {
+            markAll();
+        }
+    }
+    // Press 'Delete' to clear all
+    if (e.key === 'Delete') {
+        if (document.getElementById('clearAllBtn')) {
+            clearAll();
+        }
+    }
+});
+
+// Add hover effect for better UX
+document.querySelectorAll('.notif-row').forEach(row => {
+    row.addEventListener('mouseenter', function() {
+        this.style.cursor = 'pointer';
+    });
+});
+</script>
+
+{% endblock %}

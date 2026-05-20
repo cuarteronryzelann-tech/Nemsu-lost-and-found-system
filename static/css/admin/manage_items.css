@@ -1,0 +1,40 @@
+/*
+ * static/css/admin/manage_items.css - Admin Manage Items Page Styles
+ * ===================================================================
+ * Page-specific styles for the admin item management table.
+ * Extends base.css with tighter table spacing and action cell styles.
+ */
+
+/* ── Page-specific table adjustments ────────────────────────────────── */
+/* Tighter row padding for dense data display */
+.data-table td,
+.data-table th {
+    padding: .6rem .85rem;
+}
+
+/* Make the actions column non-wrapping */
+.actions-cell {
+    min-width: 160px;
+    flex-wrap: nowrap;
+}
+
+/* ── Approve/Deny inline form alignment ─────────────────────────────── */
+/* Ensure inline forms in table cells are flex-aligned */
+.actions-cell form {
+    display: inline-flex;
+}
+
+/* ── Status row highlight colors ─────────────────────────────────────── */
+/* Subtle background tint for pending rows to draw admin attention */
+.data-table tr.status-pending {
+    background: #fffbeb;  /* Warm yellow tint */
+}
+
+.data-table tr.status-returned {
+    opacity: .65;         /* Dim returned items — they're done */
+}
+
+/* ── Item type column width constraint ───────────────────────────────── */
+.data-table td:nth-child(3) {
+    min-width: 80px;
+}

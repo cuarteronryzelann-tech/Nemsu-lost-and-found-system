@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard | NEMSU Lost &amp; Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin/dashboard.css') }}" />
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+/* Dashboard Container */
+.admin-dashboard {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+/* Page Header */
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.page-header h2 i {
+    color: var(--primary);
+}
+
+.page-header p {
+    color: var(--gray-600);
+    font-size: 1rem;
+}
+
+/* Stats Grid */
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.admin-stat {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--info));
+}
+
+.admin-stat:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+}
+
+.admin-stat .stat-left {
+    flex: 1;
+}
+
+.admin-stat .icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--gray-50), white);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.admin-stat .val {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--gray-900);
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.admin-stat .lbl {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+.admin-stat .trend {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.trend-up { color: var(--success); }
+.trend-down { color: var(--danger); }
+
+/* Pulse Dot */
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+}
+
+/* Quick Navigation */
+.section-title {
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-title i {
+    color: var(--primary);
+}
+
+.quick-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.quick-nav-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    color: var(--gray-800);
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-nav-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), transparent);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.quick-nav-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+}
+
+.quick-nav-card:hover::after {
+    transform: scaleX(1);
+}
+
+.quick-nav-card .qn-icon {
+    font-size: 2.5rem;
+}
+
+.quick-nav-card h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.quick-nav-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    line-height: 1.4;
+}
+
+/* Recent Activity Section */
+.recent-activity {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+}
+
+.activity-list {
+    margin-top: 1rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gray-100);
+    transition: background 0.2s ease;
+}
+
+.activity-item:hover {
+    background: var(--gray-50);
+    transform: translateX(5px);
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--gray-100), white);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.activity-details {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 0.25rem;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.activity-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Flash Messages */
+.flash {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    animation: slideInRight 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.flash-success {
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid var(--success);
+}
+
+.flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid var(--danger);
+}
+
+.flash-warning {
+    background: #fed7aa;
+    color: #92400e;
+    border-left: 4px solid var(--warning);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 0.75rem;
+    }
+    
+    .page-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .admin-stats {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .quick-nav {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .admin-stat {
+        padding: 1rem;
+    }
+    
+    .admin-stat .val {
+        font-size: 1.8rem;
+    }
+    
+    .activity-item {
+        padding: 0.75rem 0;
+    }
+}
+
+/* Loading Skeleton */
+.skeleton {
+    background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Hover Effects */
+.admin-stat, .quick-nav-card {
+    cursor: pointer;
+}
+
+/* Chart Container (if needed) */
+.chart-container {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="page-header">
+        <h2>
+            <i class="fas fa-shield-alt"></i> Admin Dashboard
+        </h2>
+        <p>Welcome back, Administrator. Here's your system overview.</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+                <div class="flash flash-{{ cat }}">
+                    <i class="fas {% if cat == 'success' %}fa-check-circle{% elif cat == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                    <span>{{ msg }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Admin Stats -->
+    <div class="admin-stats">
+        <a href="{{ url_for('admin.manage_items') }}" class="admin-stat">
+            <div class="stat-left">
+                <div class="val">{{ stats.listed_items_count }}</div>
+                <div class="lbl">Listed Items</div>
+                <div class="trend trend-up">
+                    <i class="fas fa-arrow-up"></i> +12% this month
+                </div>
+            </div>
+            <div class="icon">
+                <i class="fas fa-boxes"></i>
+            </div>
+        </a>
+
+        <a href="{{ url_for('admin.manage_claims') }}" class="admin-stat">
+            <div class="stat-left">
+                <div class="val">{{ stats.pending_claims_count }}</div>
+                <div class="lbl">Pending Claims</div>
+                <div class="trend {% if stats.pending_claims_count > 5 %}trend-up{% else %}trend-down{% endif %}">
+                    {% if stats.pending_claims_count > 5 %}
+                        <i class="fas fa-arrow-up"></i> Needs attention
+                    {% else %}
+                        <i class="fas fa-arrow-down"></i> Under control
+                    {% endif %}
+                </div>
+            </div>
+            <div class="icon">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+        </a>
+
+        <a href="{{ url_for('admin.manage_users') }}" class="admin-stat">
+            <div class="stat-left">
+                <div class="val">{{ stats.total_users }}</div>
+                <div class="lbl">Total Users</div>
+                <div class="trend trend-up">
+                    <i class="fas fa-arrow-up"></i> +8% this month
+                </div>
+            </div>
+            <div class="icon">
+                <i class="fas fa-users"></i>
+            </div>
+        </a>
+
+        <a href="{{ url_for('admin.active_users') }}" class="admin-stat" style="border-left-color: var(--success);">
+            <div class="stat-left">
+                <div class="val">
+                    <span class="pulse-dot"></span>
+                    {{ stats.active_users }}
+                </div>
+                <div class="lbl">Active Users (30 min)</div>
+                <div class="trend trend-up">
+                    <i class="fas fa-clock"></i> Currently online
+                </div>
+            </div>
+            <div class="icon">
+                <i class="fas fa-circle" style="color: var(--success); font-size: 1.5rem;"></i>
+            </div>
+        </a>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="section-title">
+        <i class="fas fa-bolt"></i>
+        <span>Quick Navigation</span>
+    </div>
+    
+    <div class="quick-nav">
+        <a href="{{ url_for('admin.manage_items') }}" class="quick-nav-card">
+            <div class="qn-icon">
+                <i class="fas fa-box-open"></i>
+            </div>
+            <h4>Manage Items</h4>
+            <p>Approve, deny, and track lost &amp; found items</p>
+            <small style="color: var(--primary);">
+                <i class="fas fa-arrow-right"></i> Manage now
+            </small>
+        </a>
+
+        <a href="{{ url_for('admin.manage_claims') }}" class="quick-nav-card">
+            <div class="qn-icon">
+                <i class="fas fa-hand-holding-heart"></i>
+            </div>
+            <h4>Manage Claims</h4>
+            <p>Review and approve student claim requests</p>
+            <small style="color: var(--primary);">
+                <i class="fas fa-arrow-right"></i> Manage now
+            </small>
+        </a>
+
+        <a href="{{ url_for('admin.manage_users') }}" class="quick-nav-card">
+            <div class="qn-icon">
+                <i class="fas fa-user-cog"></i>
+            </div>
+            <h4>Manage Users</h4>
+            <p>View and manage student accounts</p>
+            <small style="color: var(--primary);">
+                <i class="fas fa-arrow-right"></i> Manage now
+            </small>
+        </a>
+
+        <a href="{{ url_for('admin.analytics') }}" class="quick-nav-card">
+            <div class="qn-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h4>Analytics</h4>
+            <p>System usage, complexity analysis &amp; charts</p>
+            <small style="color: var(--primary);">
+                <i class="fas fa-arrow-right"></i> View reports
+            </small>
+        </a>
+
+        <a href="{{ url_for('admin.manage_reports') }}" class="quick-nav-card">
+            <div class="qn-icon">
+                <i class="fas fa-flag-checkered"></i>
+            </div>
+            <h4>Manage Reports</h4>
+            <p>View and manage user reports</p>
+            <small style="color: var(--primary);">
+                <i class="fas fa-arrow-right"></i> View reports
+            </small>
+        </a>
+    </div>
+
+    <!-- Optional: Recent Activity Section -->
+    {% if recent_activities %}
+    <div class="recent-activity">
+        <div class="section-title">
+            <i class="fas fa-history"></i>
+            <span>Recent Activity</span>
+        </div>
+        <div class="activity-list">
+            {% for activity in recent_activities %}
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="fas {{ activity.icon }}"></i>
+                </div>
+                <div class="activity-details">
+                    <div class="activity-title">{{ activity.title }}</div>
+                    <div class="activity-time">{{ activity.time_ago }}</div>
+                </div>
+                <div class="activity-badge" style="background: var(--gray-100);">
+                    {{ activity.type }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-hide flash messages after 5 seconds
+setTimeout(() => {
+    document.querySelectorAll('.flash').forEach(flash => {
+        flash.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => flash.remove(), 500);
+    });
+}, 5000);
+
+// Add animation to stats cards
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, index) => {
+        if (entry.isIntersecting) {
+            setTimeout(() => {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }, index * 100);
+            observer.unobserve(entry.target);
+        }
+    });
+}, observerOptions);
+
+document.querySelectorAll('.admin-stat, .quick-nav-card').forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    card.style.transition = 'all 0.5s ease';
+    observer.observe(card);
+});
+
+// Real-time stats update (optional)
+function refreshStats() {
+    fetch('/admin/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update stats dynamically if needed
+            console.log('Stats updated:', data);
+        })
+        .catch(err => console.log('Stats refresh failed:', err));
+}
+
+// Refresh stats every 30 seconds (optional)
+// setInterval(refreshStats, 30000);
+
+// Add welcome toast for admin (first visit)
+if (!sessionStorage.getItem('adminWelcomeShown')) {
+    sessionStorage.setItem('adminWelcomeShown', 'true');
+    console.log('Welcome to Admin Dashboard');
+}
+</script>
+{% endblock %}

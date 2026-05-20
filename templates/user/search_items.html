@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+<!--
+    templates/user/search_items.html - Item Search & Filter Page
+    =============================================================
+    Allows students to:
+      - Search items by keyword (triggers binary search in controller)
+      - Filter by category (triggers binary search by category)
+      - Sort results by name, date, category, or status (quick sort)
+    Displays results as a responsive card grid.
+-->
+
+{% block title %}Search Items | NEMSU Lost &amp; Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user/search_items.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Search Lost &amp; Found Items</h2>
+    <p>Use the search and filters below to find your item.</p>
+</div>
+
+<!-- ── Nav Indicators ─────────────────────────────────────────────────── -->
+<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1.1rem;">
+    <span style="background:#fef2f2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:20px;padding:.3rem .85rem;font-size:.82rem;font-weight:700;">
+        🔴 Lost Items: {{ lost_count }}
+    </span>
+    <span style="background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;border-radius:20px;padding:.3rem .85rem;font-size:.82rem;font-weight:700;">
+        🟢 Found Items: {{ found_count }}
+    </span>
+    {% if query %}
+    <span style="background:#eff6ff;color:#1d4ed8;border:1.5px solid #93c5fd;border-radius:20px;padding:.3rem .85rem;font-size:.82rem;font-weight:700;">
+        🔍 Results for "{{ query }}"
+    </span>
+    {% endif %}
+</div>
+
+<!-- ── Search & Filter Form ───────────────────────────────────────────── -->
+<form method="GET" action="{{ url_for('user.search_items') }}" class="search-form">
+
+    <!-- Row 1: search input + search button -->
+    <div class="sf-top-row">
+        <input
+            type="text"
+            name="q"
+            value="{{ query }}"
+            placeholder="Search by item name…"
+            class="search-input"
+            autocomplete="off"
+        />
+        <button type="submit" class="btn btn-primary sf-search-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="sf-search-label">Search</span>
+        </button>
+        <!-- Filter toggle (mobile only) -->
+        <button type="button" class="sf-filter-toggle" id="sfFilterToggle" aria-expanded="false" aria-label="Filters">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+            {% if category or sort_by != 'date_reported' or order != 'desc' %}<span class="sf-filter-dot"></span>{% endif %}
+        </button>
+    </div>
+
+    <!-- Row 2: filters (always visible on desktop, collapsible on mobile) -->
+    <div class="sf-filters" id="sfFilters">
+        <select name="category" class="select-input">
+            <option value="">All Categories</option>
+            <option value="Electronics"   {% if category == 'Electronics'   %}selected{% endif %}>Electronics</option>
+            <option value="Clothing"      {% if category == 'Clothing'      %}selected{% endif %}>Clothing</option>
+            <option value="Documents"     {% if category == 'Documents'     %}selected{% endif %}>Documents</option>
+            <option value="Accessories"   {% if category == 'Accessories'   %}selected{% endif %}>Accessories</option>
+            <option value="Books"         {% if category == 'Books'         %}selected{% endif %}>Books</option>
+            <option value="Keys"          {% if category == 'Keys'          %}selected{% endif %}>Keys</option>
+            <option value="Bag"           {% if category == 'Bag'           %}selected{% endif %}>Bag</option>
+            <option value="Other"         {% if category == 'Other'         %}selected{% endif %}>Other</option>
+        </select>
+        <select name="sort_by" class="select-input">
+            <option value="date_reported" {% if sort_by == 'date_reported' %}selected{% endif %}>By Date</option>
+            <option value="name"          {% if sort_by == 'name'          %}selected{% endif %}>By Name</option>
+            <option value="category"      {% if sort_by == 'category'      %}selected{% endif %}>By Category</option>
+            <option value="status"        {% if sort_by == 'status'        %}selected{% endif %}>By Status</option>
+        </select>
+        <select name="order" class="select-input">
+            <option value="desc" {% if order == 'desc' %}selected{% endif %}>Newest</option>
+            <option value="asc"  {% if order == 'asc'  %}selected{% endif %}>Oldest</option>
+        </select>
+        <a href="{{ url_for('user.search_items') }}" class="sf-clear-btn">✕ Clear</a>
+    </div>
+
+</form>
+
+<!-- ── Search Results ─────────────────────────────────────────────────── -->
+<div>
+<div class="results-header">
+    <span class="results-count">{{ items | length }} item(s) found</span>
+    {% if query %}<span class="results-query">for "{{ query }}"</span>{% endif %}
+</div>
+
+<!-- Skeleton grid -->
+<div id="searchSkeleton" class="items-grid">
+  {% for _ in range(6) %}
+  <div class="item-card-skeleton">
+    <div class="skeleton skeleton-img"></div>
+    <div class="skeleton-body" style="padding:.85rem;">
+      <div class="skeleton skeleton-title" style="width:70%;"></div>
+      <div class="skeleton skeleton-text" style="width:90%;"></div>
+      <div class="skeleton skeleton-text" style="width:55%;"></div>
+      <div class="skeleton skeleton-btn" style="margin-top:.5rem;"></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if items %}
+<div class="items-grid" id="itemsGrid" style="display:none;">
+    {% for item in items %}
+    <div class="item-card">
+        {% if item.image_filename %}
+        <img src="{{ url_for('static', filename='uploads/items/' ~ item.image_filename) }}"
+             alt="{{ item.name }}" loading="lazy"
+             style="width:100%;height:140px;object-fit:cover;border-radius:8px;margin-bottom:.5rem;" onerror="this.style.display='none'" />
+        {% else %}
+        <div style="width:100%;height:100px;background:#f1f5f9;border-radius:8px;margin-bottom:.5rem;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#cbd5e1;">{{ "🔍" if item.type == "lost" else "📦" }}</div>
+        {% endif %}
+        <div class="item-card-header">
+            <span class="badge badge-{{ item.type }}">{{ item.type | capitalize }}</span>
+            <span class="item-date">{{ item.date_reported }}</span>
+        </div>
+        <h4 class="item-name">{{ item.name }}</h4>
+        {% if item.description %}
+        <p class="item-desc">{{ item.description[:80] }}{% if item.description|length > 80 %}…{% endif %}</p>
+        {% endif %}
+        <p class="item-location">📍 {{ item.location }}</p>
+        {% if item.category %}
+        <p class="item-category">🏷️ {{ item.category }}</p>
+        {% endif %}
+        <div class="item-card-footer" style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
+            <a href="{{ url_for('item.item_detail', item_id=item.id) }}"
+               class="btn btn-sm btn-outline">Details</a>
+            {% if item.type == 'found' %}
+            <a href="{{ url_for('user.claim_item', item_id=item.id) }}"
+               class="btn btn-sm btn-primary">Claim</a>
+            {% endif %}
+            {% if item.reported_by and item.reported_by != session["user"]["id"] %}
+            <button onclick="openReportUser({{ item.reported_by }},{{ item.id }})"
+                    style="background:none;border:1.5px solid #fca5a5;color:#ef4444;border-radius:6px;padding:.25rem .6rem;font-size:.73rem;font-weight:700;cursor:pointer;" title="Report this user">🚩</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" id="itemsGrid" style="display:none;">
+    <p>No items found matching your search. Try a different keyword or category.</p>
+    <a href="{{ url_for('user.report_lost') }}" class="btn btn-warning">Report Your Lost Item</a>
+</div>
+{% endif %}
+</div><!-- end items tab -->
+
+<!-- Report User Modal -->
+<div id="reportUserOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:#fff;border-radius:16px;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.18);overflow:hidden;">
+    <div style="background:#fde8e8;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #fca5a5;">
+      <h3 style="margin:0;color:#c81e1e;font-size:1rem;font-weight:800;">🚩 Report User</h3>
+      <button onclick="closeReportUser()" style="background:#fca5a5;border:none;color:#9b1c1c;width:28px;height:28px;border-radius:50%;cursor:pointer;">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('user.submit_report') }}">
+      <input type="hidden" id="rpt_user_id" name="reported_user_id" value="">
+      <input type="hidden" id="rpt_item_id" name="reported_item_id" value="">
+      <div style="padding:1.25rem;">
+        <p style="margin:0 0 1rem;color:#64748b;font-size:.88rem;">Report this user for inappropriate behavior. Misuse may result in your account suspension.</p>
+        <label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:.4rem;">Reason *</label>
+        <select name="reason" required style="width:100%;padding:.55rem .75rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.88rem;margin-bottom:.75rem;">
+          <option value="">-- Select reason --</option>
+          <option value="Scam">🚨 Scam / Fraud</option>
+          <option value="Fake report">🤡 Fake report</option>
+          <option value="Harassment">😠 Harassment</option>
+          <option value="Inappropriate content">🔞 Inappropriate content</option>
+          <option value="Stolen item">🔒 Claiming stolen item</option>
+          <option value="Other">📝 Other</option>
+        </select>
+        <label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:.4rem;">Details (optional)</label>
+        <textarea name="details" rows="3" style="width:100%;padding:.55rem .75rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.88rem;font-family:inherit;resize:vertical;" placeholder="Describe the issue..."></textarea>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.85rem;">
+          <button type="button" onclick="closeReportUser()" style="background:#f1f5f9;border:none;border-radius:8px;padding:.5rem 1.1rem;cursor:pointer;font-size:.88rem;">Cancel</button>
+          <button type="submit" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:.5rem 1.1rem;font-weight:700;cursor:pointer;font-size:.88rem;">🚩 Submit Report</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() {
+    document.getElementById("searchSkeleton").style.display = "none";
+    document.getElementById("itemsGrid").style.display = "";
+  }, 500);
+
+  /* ── Filter toggle (mobile) ── */
+  var toggle  = document.getElementById("sfFilterToggle");
+  var filters = document.getElementById("sfFilters");
+  var hasActiveFilter = {{ 'true' if (category or (sort_by and sort_by != 'date_reported') or order == 'asc') else 'false' }};
+
+  // Auto-open filters on mobile if a filter is active
+  if (hasActiveFilter && window.innerWidth <= 640) {
+    filters.classList.add("open");
+    toggle.setAttribute("aria-expanded", "true");
+  }
+
+  if (toggle && filters) {
+    toggle.addEventListener("click", function() {
+      var isOpen = filters.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+});
+function openReportUser(uid, iid) {
+  document.getElementById("rpt_user_id").value = uid;
+  document.getElementById("rpt_item_id").value = iid;
+  document.getElementById("reportUserOverlay").style.display = "flex";
+}
+function closeReportUser() {
+  document.getElementById("reportUserOverlay").style.display = "none";
+}
+</script>
+{% endblock %}

@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }} | NEMSU Lost &amp; Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+.detail-card { background:#fff;border-radius:16px;padding:1.75rem;border:1px solid #e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.detail-header { display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap; }
+.detail-title { margin:0;font-size:1.35rem;color:#1e293b;font-weight:800; }
+.detail-badges { display:flex;gap:.4rem;flex-wrap:wrap; }
+.detail-fields { display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.5rem; }
+.detail-row { display:flex;gap:.5rem;flex-wrap:wrap; }
+.detail-label { font-weight:700;color:#475569;font-size:.88rem;min-width:120px;flex-shrink:0; }
+.detail-value { color:#1e293b;font-size:.92rem; }
+.detail-actions { display:flex;flex-wrap:wrap;gap:.6rem;padding-top:1.1rem;border-top:1px solid #f1f5f9; }
+
+/* map */
+.map-wrapper {
+    position: relative;
+    z-index: 0;          /* create a new stacking context */
+    isolation: isolate;  /* contain Leaflet's internal z-indices */
+    border-radius: 10px;
+    overflow: hidden;    /* clip markers/popups to the map box */
+    margin-top: .5rem;
+    border: 1px solid #e2e8f0;
+}
+#itemMap {
+    width: 100%;
+    height: 280px;
+    display: block;
+}
+@media (max-width: 640px) {
+    #itemMap { height: 220px; }
+}
+
+@keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(26,86,219,.5); }
+    70%  { box-shadow: 0 0 0 10px rgba(26,86,219,0); }
+    100% { box-shadow: 0 0 0 0 rgba(26,86,219,0); }
+}
+
+/* Report button */
+.report-trigger-btn {
+    display:inline-flex;align-items:center;gap:.4rem;
+    background:#fff;border:1.5px solid #e2e8f0;color:#ef4444;
+    border-radius:9px;padding:.4rem .9rem;font-size:.82rem;font-weight:700;
+    cursor:pointer;transition:background .15s,border-color .15s;
+}
+.report-trigger-btn:hover { background:#fef2f2;border-color:#fca5a5; }
+
+/* Report Modal */
+.modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center; }
+.modal-overlay.active { display:flex; }
+.modal-box { background:#fff;border-radius:16px;padding:2rem;max-width:440px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.modal-box h3 { margin:0 0 .4rem;color:#1e293b; }
+.modal-box p { margin:0 0 1rem;color:#64748b;font-size:.88rem; }
+.modal-box select, .modal-box textarea {
+    width:100%;border:1.5px solid #e2e8f0;border-radius:9px;
+    padding:.6rem .85rem;font-size:.88rem;font-family:inherit;margin-bottom:.75rem;
+}
+.modal-box select:focus, .modal-box textarea:focus { outline:none;border-color:#1a56db; }
+.modal-actions { display:flex;gap:.6rem;justify-content:flex-end; }
+.report-submit-btn { background:#ef4444;color:#fff;border:none;border-radius:9px;padding:.55rem 1.1rem;font-size:.88rem;font-weight:700;cursor:pointer; }
+.report-submit-btn:hover { background:#b91c1c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Item Details</h2>
+    <a href="javascript:history.back()" class="btn btn-outline">← Back</a>
+</div>
+
+<div class="detail-card">
+
+    <!-- Header -->
+    <div class="detail-header">
+        <h3 class="detail-title">{{ item.name }}</h3>
+        <div class="detail-badges">
+            <span class="badge badge-{{ item.type }}">{{ item.type | capitalize }}</span>
+            <span class="badge badge-status-{{ item.status }}">{{ item.status | capitalize }}</span>
+        </div>
+    </div>
+
+    <!-- Fields -->
+    <div class="detail-fields">
+
+        {% if item.description %}
+        <div class="detail-row">
+            <span class="detail-label">Description</span>
+            <span class="detail-value">{{ item.description }}</span>
+        </div>
+        {% endif %}
+
+        <div class="detail-row">
+            <span class="detail-label">Category</span>
+            <span class="detail-value">{{ item.category or '—' }}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Location</span>
+            <span class="detail-value">📍 {{ item.location }}</span>
+        </div>
+
+        {% if item.pickup_address %}
+        <div class="detail-row">
+            <span class="detail-label">Pickup / Meet at</span>
+            <span class="detail-value">📌 {{ item.pickup_address }}</span>
+        </div>
+        {% endif %}
+
+        <div class="detail-row">
+            <span class="detail-label">Date Reported</span>
+            <span class="detail-value">{{ item.date_reported }}</span>
+        </div>
+
+        {% if item.time_found %}
+        <div class="detail-row">
+            <span class="detail-label">Time Found</span>
+            <span class="detail-value">{{ item.time_found }}</span>
+        </div>
+        {% endif %}
+
+        {% if reporter %}
+        <div class="detail-row">
+            <span class="detail-label">Reported By</span>
+            <span class="detail-value">{{ reporter.full_name }}</span>
+        </div>
+        {% endif %}
+
+        <!-- ── Map (show only if GPS coords stored) ── -->
+        {% if item.pickup_lat and item.pickup_lng %}
+        <div class="detail-row" style="flex-direction:column;">
+            <span class="detail-label">📍 Location on Map</span>
+            <div class="map-wrapper">
+                <div id="itemMap"></div>
+            </div>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.4rem;">
+                <span style="font-size:.75rem;color:#94a3b8;">
+                    📌 Item found at: {{ item.pickup_address or item.location }}
+                    &nbsp;·&nbsp;
+                    <a href="https://www.google.com/maps?q={{ item.pickup_lat }},{{ item.pickup_lng }}"
+                       target="_blank" style="color:#1a56db;">Open in Google Maps ↗</a>
+                </span>
+            </div>
+            <div id="myLocStatus" style="font-size:.76rem;color:#64748b;margin-top:.25rem;">
+                📡 Locating your position…
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Item image -->
+    <div style="margin-bottom:1.25rem;">
+      {% if item.image_filename %}
+        <img src="{{ url_for('static', filename='uploads/items/' ~ item.image_filename) }}"
+             alt="{{ item.name }}"
+             style="max-width:100%;max-height:320px;border-radius:12px;border:1px solid #e2e8f0;display:block;"
+             loading="lazy" decoding="async"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div style="display:none;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;
+                    background:#f1f5f9;border-radius:12px;border:1px solid #e2e8f0;
+                    min-height:180px;color:#94a3b8;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span style="font-size:.82rem;font-weight:600;">Image unavailable</span>
+        </div>
+      {% else %}
+        <div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;
+                    background:#f1f5f9;border-radius:12px;border:1px solid #e2e8f0;
+                    min-height:180px;color:#94a3b8;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span style="font-size:.82rem;font-weight:600;">No image provided</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="detail-actions">
+        {% if item.type == 'found' and item.status == 'listed' and session['user']['role'] == 'user' %}
+        <a href="{{ url_for('user.claim_item', item_id=item.id) }}" class="btn btn-primary">
+            🔖 Claim This Item
+        </a>
+        {% endif %}
+
+        {% if session['user']['role'] == 'user' and item.reported_by and item.reported_by != session['user']['id'] %}
+        <a href="{{ url_for('chat.start_conversation', other_user_id=item.reported_by) }}?item_id={{ item.id }}"
+           class="btn btn-outline" style="border-color:#1a56db;color:#1a56db;">
+            💬 Chat with Finder/Reporter
+        </a>
+        {% endif %}
+
+        {% if session['user']['role'] == 'admin' %}
+        <a href="{{ url_for('admin.manage_items') }}" class="btn btn-secondary">
+            Manage in Admin Panel
+        </a>
+        {% endif %}
+
+        <!-- Report button (users only, can't report own item) -->
+        {% if session['user']['role'] == 'user' %}
+        <button class="report-trigger-btn" onclick="openReportModal()">
+            🚩 Report
+        </button>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ── Report Modal ── -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal-box">
+        <h3>🚩 Report This Item</h3>
+        <p>Tell us what's wrong with this item report. Abuse of this feature may result in account suspension.</p>
+        <form method="POST" action="{{ url_for('user.submit_report') }}">
+            <input type="hidden" name="reported_item_id" value="{{ item.id }}" />
+            {% if reporter %}
+            <input type="hidden" name="reported_user_id" value="{{ reporter.id }}" />
+            {% endif %}
+
+            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem;">
+                Reason *
+            </label>
+            <select name="reason" required>
+                <option value="">-- Select a reason --</option>
+                <option value="Fake or joke report">🤡 Fake or joke report</option>
+                <option value="Illegal item">🚫 Illegal or prohibited item</option>
+                <option value="Inappropriate content">🔞 Inappropriate content</option>
+                <option value="Spam or duplicate">📋 Spam or duplicate post</option>
+                <option value="Wrong information">❌ Wrong or misleading information</option>
+                <option value="Other">📝 Other</option>
+            </select>
+
+            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem;">
+                Additional Details (optional)
+            </label>
+            <textarea name="details" rows="3"
+                      placeholder="Describe the issue in more detail..."></textarea>
+
+            <div class="modal-actions">
+                <button type="button" onclick="closeReportModal()"
+                        style="background:#f1f5f9;border:none;border-radius:8px;padding:.5rem 1.1rem;cursor:pointer;font-size:.88rem;">
+                    Cancel
+                </button>
+                <button type="submit" class="report-submit-btn">
+                    🚩 Submit Report
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map (only init if coords exist) ─────────────────────────────────────────
+{% if item.pickup_lat and item.pickup_lng %}
+(function() {
+    const itemLat = {{ item.pickup_lat }};
+    const itemLng = {{ item.pickup_lng }};
+    const itemName = {{ item.name | tojson }};
+    const itemAddr = {{ (item.pickup_address or item.location) | tojson }};
+
+    const map = L.map('itemMap', {
+        zoomControl: true,
+        scrollWheelZoom: false,
+        tap: false            // prevents iOS ghost-click scroll issues
+    }).setView([itemLat, itemLng], 16);
+
+    // Keep all Leaflet panes inside the map's stacking context
+    Object.values(map.getPanes()).forEach(pane => {
+        pane.style.zIndex = '';   // clear inline z-index so CSS isolation takes over
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(map);
+
+    // Item / finder marker (red)
+    const itemIcon = L.divIcon({
+        html: '<div style="background:#ef4444;border:3px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>',
+        iconSize: [18, 18], iconAnchor: [9, 9], className: ''
+    });
+    L.marker([itemLat, itemLng], { icon: itemIcon }).addTo(map)
+     .bindPopup(`<strong>📦 ${itemName}</strong><br><small>${itemAddr}</small>`, { autoPan: false })
+     .openPopup();
+
+    // User's real-time location (blue)
+    const myIcon = L.divIcon({
+        html: '<div style="background:#1a56db;border:3px solid #fff;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 6px rgba(0,0,0,.4);animation:pulse 1.5s infinite;"></div>',
+        iconSize: [16, 16], iconAnchor: [8, 8], className: ''
+    });
+
+    const statusEl = document.getElementById('myLocStatus');
+    let myMarker = null;
+
+    function onPosition(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = Math.round(pos.coords.accuracy);
+
+        if (myMarker) {
+            myMarker.setLatLng([lat, lng]);
+        } else {
+            myMarker = L.marker([lat, lng], { icon: myIcon }).addTo(map)
+                .bindPopup('<strong>📍 Your Location</strong><br><small>Accuracy: ±' + acc + 'm</small>');
+
+            // Fit map to show both markers
+            const bounds = L.latLngBounds([[itemLat, itemLng], [lat, lng]]);
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+        }
+
+        if (statusEl) {
+            const dist = distanceMeters(lat, lng, itemLat, itemLng);
+            const distStr = dist < 1000 ? Math.round(dist) + 'm away' : (dist/1000).toFixed(1) + 'km away';
+            statusEl.innerHTML = '🔵 You — ' + distStr + ' from this item &nbsp;·&nbsp; ±' + acc + 'm accuracy';
+            statusEl.style.color = '#1a56db';
+        }
+    }
+
+    function onError(err) {
+        if (statusEl) {
+            statusEl.textContent = '⚠️ Location unavailable: ' + err.message;
+            statusEl.style.color = '#94a3b8';
+        }
+    }
+
+    function distanceMeters(lat1, lng1, lat2, lng2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 +
+                  Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    if ('geolocation' in navigator) {
+        navigator.geolocation.watchPosition(onPosition, onError, {
+            enableHighAccuracy: true,
+            maximumAge: 10000,
+            timeout: 15000
+        });
+    } else {
+        if (statusEl) statusEl.textContent = '⚠️ Geolocation not supported by your browser.';
+    }
+})();
+{% endif %}
+
+// ── Report Modal ─────────────────────────────────────────────────────────────
+function openReportModal() {
+    document.getElementById('reportModal').classList.add('active');
+}
+function closeReportModal() {
+    document.getElementById('reportModal').classList.remove('active');
+}
+document.getElementById('reportModal').addEventListener('click', function(e) {
+    if (e.target === this) closeReportModal();
+});
+</script>
+{% endblock %}

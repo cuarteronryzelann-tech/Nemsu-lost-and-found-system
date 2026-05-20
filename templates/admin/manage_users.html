@@ -1,0 +1,893 @@
+{% extends "base.html" %}
+{% block title %}Manage Users | NEMSU Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+/* Layout */
+.page-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+/* Header */
+.page-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.page-header h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.page-header h2 i {
+    color: var(--primary);
+}
+
+.page-header p {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+}
+
+/* Card container */
+.card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-xl);
+}
+
+/* Top bar */
+.table-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, var(--gray-50), white);
+    border-bottom: 2px solid var(--gray-200);
+}
+
+.table-top h3 {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 700;
+    color: var(--gray-700);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table-top h3 i {
+    color: var(--primary);
+}
+
+.user-count {
+    background: var(--primary);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+/* Search Box */
+.search-box {
+    position: relative;
+}
+
+.search-box input {
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    border-radius: 12px;
+    border: 2px solid var(--gray-200);
+    font-size: 0.85rem;
+    width: 260px;
+    transition: all 0.3s ease;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.search-box i {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    color: var(--gray-400);
+}
+
+/* Table */
+.table-wrap {
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.admin-table th {
+    text-align: left;
+    padding: 1rem 1.25rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-600);
+    background: var(--gray-50);
+    font-weight: 700;
+    border-bottom: 2px solid var(--gray-200);
+}
+
+.admin-table td {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--gray-100);
+    transition: background 0.2s ease;
+}
+
+.admin-table tr:hover td {
+    background: var(--gray-50);
+}
+
+/* User Info */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.avatar img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+}
+
+.user-details {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 700;
+    color: var(--gray-800);
+    margin-bottom: 0.2rem;
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+/* Status Badges */
+.badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+.online {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.recent {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.offline {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.disabled-badge {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-view {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.btn-view:hover {
+    background: var(--gray-200);
+}
+
+.btn-disable {
+    background: var(--warning);
+    color: white;
+}
+
+.btn-disable:hover {
+    background: #d97706;
+}
+
+.btn-delete {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
+.btn-enable {
+    background: var(--success);
+    color: white;
+}
+
+.btn-enable:hover {
+    background: #059669;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray-500);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--gray-400);
+}
+
+.empty-state p {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--gray-900);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    animation: slideInUp 0.3s ease;
+    z-index: 1000;
+}
+
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.toast.warning { background: var(--warning); }
+.toast.info { background: var(--primary); }
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Loading State */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-wrap {
+        padding: 0.75rem;
+    }
+    
+    .admin-table thead {
+        display: none;
+    }
+    
+    .admin-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        overflow: hidden;
+        background: white;
+    }
+    
+    .admin-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        border: none;
+        border-bottom: 1px solid var(--gray-100);
+    }
+    
+    .admin-table td:last-child {
+        border-bottom: none;
+    }
+    
+    .admin-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: var(--gray-600);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+    
+    .user-info {
+        flex: 1;
+    }
+    
+    .action-buttons {
+        justify-content: flex-end;
+    }
+    
+    .table-top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+}
+
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background: var(--gray-800);
+    color: white;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+    margin-bottom: 0.5rem;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+
+/* Confirmation Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: white;
+    margin: 15% auto;
+    padding: 2rem;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    animation: slideInDown 0.3s ease;
+}
+
+.modal-content i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.modal-content.warning i { color: var(--warning); }
+.modal-content.danger i { color: var(--danger); }
+
+.modal-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.modal-btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-btn.confirm {
+    background: var(--danger);
+    color: white;
+}
+
+.modal-btn.cancel {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+    <div class="page-header">
+        <h2><i class="fas fa-users"></i> Manage Users</h2>
+        <p>View and manage all registered users in the system</p>
+    </div>
+
+    <div class="card">
+        <!-- Top Bar -->
+        <div class="table-top">
+            <h3>
+                <i class="fas fa-user-friends"></i>
+                Total Users
+                <span class="user-count" id="userCount">{{ users|length }}</span>
+            </h3>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="userSearch" placeholder="Search by name, email, or course...">
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+            <table class="admin-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user"></i> User</th>
+                        <th><i class="fas fa-graduation-cap"></i> Course</th>
+                        <th><i class="fas fa-calendar-alt"></i> Year</th>
+                        <th><i class="fas fa-circle"></i> Status</th>
+                        <th><i class="fas fa-cog"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    {% for u in users %}
+                    <tr class="user-row" data-user-id="{{ u.id }}">
+                        <!-- USER -->
+                        <td data-label="User">
+                            <div class="user-info">
+                                <div class="avatar">
+                                    {% if u.profile_picture and u.profile_pic_status == 'approved' %}
+                                        <img src="{% if u.profile_picture.startswith('data:') %}{{ u.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ u.profile_picture) }}{% endif %}" 
+                                             alt="{{ u.full_name }}"
+                                             onerror="this.parentElement.innerHTML='👤'">
+                                    {% else %}👤{% endif %}
+                                </div>
+                                <div class="user-details">
+                                    <div class="user-name">{{ u.full_name }}</div>
+                                    <div class="user-email">{{ u.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- COURSE -->
+                        <td data-label="Course">
+                            {% if u.course %}
+                                <span class="badge" style="background: var(--gray-100);">
+                                    {{ u.course }}
+                                </span>
+                            {% else %}
+                                <span style="color: var(--gray-400);">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- YEAR -->
+                        <td data-label="Year">
+                            {{ u.year_level or '—' }}
+                        </td>
+
+                        <!-- STATUS -->
+                        <td data-label="Status">
+                            {% set is_disabled = u.disable_until and u.disable_until > now_str %}
+                            {% if is_disabled %}
+                                <span class="badge disabled-badge">
+                                    <i class="fas fa-ban"></i> Disabled
+                                </span>
+                            {% else %}
+                                {% if u.last_active and u.last_active >= active_threshold_5 %}
+                                    <span class="badge online">
+                                        <i class="fas fa-circle"></i> Online
+                                    </span>
+                                {% elif u.last_active and u.last_active >= active_threshold_30 %}
+                                    <span class="badge recent">
+                                        <i class="fas fa-clock"></i> Recent
+                                    </span>
+                                {% else %}
+                                    <span class="badge offline">
+                                        <i class="fas fa-circle"></i> Offline
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+
+                        <!-- ACTIONS -->
+                        <td data-label="Actions">
+                            <div class="action-buttons">
+                                <a href="{{ url_for('admin.view_user', user_id=u.id) }}" 
+                                   class="action-btn btn-view" data-tooltip="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+
+                                {% set is_disabled = u.disable_until and u.disable_until > now_str %}
+                                {% if is_disabled %}
+                                <form method="POST" action="{{ url_for('admin.enable_user', user_id=u.id) }}" 
+                                      style="display: inline;" onsubmit="return confirmAction('enable', '{{ u.full_name }}')">
+                                    <button type="submit" class="action-btn btn-enable" data-tooltip="Enable User">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <button onclick="disableUser({{ u.id }}, '{{ u.full_name }}')" 
+                                        class="action-btn btn-disable" data-tooltip="Disable User">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                                {% endif %}
+
+                                <button onclick="deleteUser({{ u.id }}, '{{ u.full_name }}')" 
+                                        class="action-btn btn-delete" data-tooltip="Delete User">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Empty State -->
+            <div id="emptyState" style="display: none;">
+                <div class="empty-state">
+                    <i class="fas fa-user-slash"></i>
+                    <p>No users found</p>
+                    <p style="font-size: 0.85rem;">Try adjusting your search criteria</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="modal">
+    <div class="modal-content" id="modalContent">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h3 id="modalTitle">Confirm Action</h3>
+        <p id="modalMessage">Are you sure you want to perform this action?</p>
+        <div class="modal-buttons">
+            <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-btn confirm" id="confirmBtn">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingAction = null;
+let pendingUserId = null;
+
+// Search functionality
+document.getElementById("userSearch").addEventListener("input", function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll(".user-row");
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const isVisible = text.includes(searchTerm);
+        row.style.display = isVisible ? "" : "none";
+        if (isVisible) visibleCount++;
+    });
+    
+    // Update user count
+    document.getElementById("userCount").textContent = visibleCount;
+    
+    // Show/hide empty state
+    const emptyState = document.getElementById("emptyState");
+    const tableBody = document.getElementById("usersTableBody");
+    
+    if (visibleCount === 0) {
+        emptyState.style.display = "block";
+        tableBody.style.display = "none";
+    } else {
+        emptyState.style.display = "none";
+        tableBody.style.display = "";
+    }
+});
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle')}"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function showModal(title, message, onConfirm, type = 'warning') {
+    const modal = document.getElementById('confirmationModal');
+    const modalContent = document.getElementById('modalContent');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const confirmBtn = document.getElementById('confirmBtn');
+    
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    
+    // Reset modal class
+    modalContent.className = 'modal-content';
+    if (type === 'danger') {
+        modalContent.classList.add('danger');
+    } else if (type === 'warning') {
+        modalContent.classList.add('warning');
+    }
+    
+    modal.style.display = 'block';
+    
+    // Remove previous event listener
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.addEventListener('click', () => {
+        onConfirm();
+        closeModal();
+    });
+}
+
+function closeModal() {
+    document.getElementById('confirmationModal').style.display = 'none';
+    pendingAction = null;
+    pendingUserId = null;
+}
+
+function disableUser(id, userName) {
+    showModal(
+        'Disable User Account',
+        `Are you sure you want to disable ${userName}'s account? They won't be able to log in until re-enabled.`,
+        () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/users/${id}/disable`;
+            document.body.appendChild(form);
+            form.submit();
+        },
+        'warning'
+    );
+}
+
+function deleteUser(id, userName) {
+    showModal(
+        'Delete User Account',
+        `⚠️ WARNING: This action is permanent. Are you absolutely sure you want to delete ${userName}'s account? All their data will be removed.`,
+        () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/users/${id}/delete`;
+            document.body.appendChild(form);
+            form.submit();
+        },
+        'danger'
+    );
+}
+
+function confirmAction(action, userName) {
+    const actions = {
+        enable: `Are you sure you want to enable ${userName}'s account?`,
+        disable: `Are you sure you want to disable ${userName}'s account?`,
+        delete: `⚠️ WARNING: This will permanently delete ${userName}'s account and all associated data. Are you sure?`
+    };
+    
+    return confirm(actions[action] || `Are you sure you want to ${action} this user?`);
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Press '/' to focus search
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        document.getElementById('userSearch').focus();
+    }
+    
+    // Press 'Esc' to clear search
+    if (e.key === 'Escape') {
+        const searchInput = document.getElementById('userSearch');
+        if (searchInput.value) {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+        }
+    }
+});
+
+// Add loading state to action buttons
+document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        if (this.classList.contains('btn-view')) return;
+        
+        const originalHTML = this.innerHTML;
+        this.innerHTML = '<span class="spinner"></span>';
+        this.disabled = true;
+        
+        // If it's a form submission, let it proceed
+        if (this.tagName === 'BUTTON' && this.closest('form')) {
+            setTimeout(() => {
+                this.innerHTML = originalHTML;
+                this.disabled = false;
+            }, 1000);
+        }
+    });
+});
+
+// Add animation to table rows
+const observerOptions = {
+    threshold: 0,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, index) => {
+        if (entry.isIntersecting) {
+            setTimeout(() => {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateX(0)';
+            }, index * 50);
+            observer.unobserve(entry.target);
+        }
+    });
+}, observerOptions);
+
+document.querySelectorAll('.user-row').forEach((row, index) => {
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(-20px)';
+    row.style.transition = `all 0.3s ease ${index * 0.05}s`;
+    observer.observe(row);
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('confirmationModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

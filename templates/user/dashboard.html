@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | NEMSU Lost & Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user/dashboard.css') }}" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+    --primary:#1a56db; --primary-dark:#1341a8; --success:#10b981;
+    --danger:#ef4444; --gray-50:#f9fafb; --gray-100:#f3f4f6;
+    --gray-200:#e5e7eb; --gray-500:#6b7280; --gray-600:#6b7280;
+    --gray-700:#374151; --gray-800:#1f2937; --gray-900:#111827;
+    --shadow-sm:0 1px 2px 0 rgb(0 0 0/.05);
+    --shadow-md:0 4px 6px -1px rgb(0 0 0/.1);
+    --shadow-lg:0 10px 15px -3px rgb(0 0 0/.1);
+    --shadow-xl:0 20px 25px -5px rgb(0 0 0/.1);
+}
+.dashboard-container{max-width:1400px;margin:0 auto;padding:1.25rem}
+
+/* ── Welcome Banner ─────────────────────────────────────────────────── */
+.welcome-banner{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    border-radius:20px;padding:2rem;margin-bottom:1.5rem;
+    display:flex;align-items:center;gap:1.5rem;color:white;
+    box-shadow:var(--shadow-lg);animation:fadeInUp .5s ease;
+}
+.welcome-banner .avatar{
+    width:76px;height:76px;flex-shrink:0;
+    background:rgba(255,255,255,.2);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:2.2rem;border:3px solid rgba(255,255,255,.35);overflow:hidden;
+}
+.welcome-banner .avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.welcome-banner h2{font-size:1.7rem;font-weight:700;margin-bottom:.35rem}
+.welcome-banner p{opacity:.9;font-size:.93rem}
+.welcome-banner .pill{
+    display:inline-block;margin-top:.5rem;
+    background:rgba(255,255,255,.2);padding:.2rem .75rem;
+    border-radius:20px;font-size:.78rem;
+}
+
+/* ── Search Panel ───────────────────────────────────────────────────── */
+.search-panel{
+    background:white;border-radius:16px;padding:1.1rem 1.25rem;
+    margin-bottom:1.5rem;box-shadow:var(--shadow-sm);
+    border:1px solid var(--gray-200);
+}
+.search-panel-title{
+    font-size:.82rem;font-weight:700;color:var(--gray-600);
+    text-transform:uppercase;letter-spacing:.05em;margin-bottom:.8rem;
+    display:flex;align-items:center;gap:.4rem;
+}
+.search-panel-title i{color:var(--primary)}
+.search-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.search-input-wrap{position:relative;flex:2;min-width:160px}
+.search-input-wrap i{
+    position:absolute;left:.8rem;top:50%;transform:translateY(-50%);
+    color:var(--gray-500);font-size:.85rem;pointer-events:none;
+}
+.s-input{
+    width:100%;padding:.6rem .85rem .6rem 2.4rem;
+    border:1.5px solid var(--gray-200);border-radius:10px;
+    font-size:.88rem;background:white;color:var(--gray-800);
+    transition:border-color .15s,box-shadow .15s;
+}
+.s-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.s-select{
+    flex:1;min-width:130px;padding:.6rem .65rem;
+    border:1.5px solid var(--gray-200);border-radius:10px;
+    font-size:.85rem;background:white;color:var(--gray-800);cursor:pointer;
+    transition:border-color .15s;
+}
+.s-select:focus{outline:none;border-color:var(--primary)}
+.s-btn{
+    padding:.6rem 1.1rem;border:none;border-radius:10px;
+    font-weight:700;font-size:.85rem;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.s-btn-primary{background:var(--primary);color:white}
+.s-btn-primary:hover{background:var(--primary-dark)}
+.s-btn-clear{background:var(--gray-100);color:var(--gray-700)}
+.s-btn-clear:hover{background:var(--gray-200)}
+
+/* ── User Results ───────────────────────────────────────────────────── */
+.user-results-section{margin-bottom:1.5rem}
+.user-results-section h4{
+    font-size:.9rem;font-weight:700;color:var(--gray-700);
+    margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;
+}
+.user-results-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:.75rem;
+}
+.user-card{
+    background:white;border:1.5px solid var(--gray-200);border-radius:12px;
+    padding:.8rem;display:flex;align-items:center;gap:.7rem;
+    box-shadow:var(--shadow-sm);transition:box-shadow .2s,border-color .2s;
+}
+.user-card:hover{box-shadow:var(--shadow-md);border-color:var(--primary)}
+.user-card-avatar{
+    width:42px;height:42px;border-radius:50%;flex-shrink:0;
+    background:#1a56db;display:flex;align-items:center;justify-content:center;
+    font-size:1rem;color:#fff;font-weight:700;overflow:hidden;
+}
+.user-card-avatar img{width:100%;height:100%;object-fit:cover}
+.user-card-info{min-width:0;flex:1}
+.user-card-name{font-weight:700;color:var(--gray-800);font-size:.85rem;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-card-email{color:var(--gray-600);font-size:.73rem;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-card-course{color:#94a3b8;font-size:.71rem;margin-top:.12rem}
+.user-card-chat{
+    flex-shrink:0;background:var(--primary);color:#fff;
+    text-decoration:none;border-radius:7px;padding:.28rem .6rem;
+    font-size:.73rem;font-weight:700;
+}
+.user-card-chat:hover{background:var(--primary-dark);color:#fff}
+
+/* ── Feed Header ────────────────────────────────────────────────────── */
+.feed-header{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:1.1rem;flex-wrap:wrap;gap:.6rem;
+}
+.feed-header h3{font-size:1.1rem;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:.5rem}
+.feed-header h3 i{color:var(--primary)}
+
+/* ── Filter Pills ───────────────────────────────────────────────────── */
+.filter-pills{display:flex;gap:.4rem;flex-wrap:wrap}
+.filter-pill{
+    padding:.3rem .85rem;border-radius:20px;font-size:.78rem;
+    font-weight:600;border:2px solid var(--gray-200);
+    background:white;color:var(--gray-600);cursor:pointer;transition:all .2s ease;
+}
+.filter-pill:hover{border-color:var(--primary);color:var(--primary)}
+.filter-pill.active{background:var(--primary);border-color:var(--primary);color:white}
+.filter-pill.fp-found.active{background:var(--success);border-color:var(--success)}
+.filter-pill.fp-lost.active{background:var(--danger);border-color:var(--danger)}
+
+/* ── Items Grid ─────────────────────────────────────────────────────── */
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.1rem}
+
+/* ── Item Card ──────────────────────────────────────────────────────── */
+.item-card{
+    background:white;border-radius:16px;overflow:hidden;
+    box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);
+    transition:all .3s ease;display:flex;flex-direction:column;
+}
+.item-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl);border-color:var(--primary)}
+.item-card-image{position:relative;height:185px;overflow:hidden;background:var(--gray-100);flex-shrink:0}
+.item-card-image img{width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
+.item-card:hover .item-card-image img{transform:scale(1.06)}
+
+.type-badge{
+    position:absolute;top:.65rem;right:.65rem;
+    padding:.25rem .6rem;border-radius:20px;font-size:.65rem;
+    font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:white;
+}
+.type-Lost{background:linear-gradient(135deg,#ef4444,#dc2626)}
+.type-Found{background:linear-gradient(135deg,#10b981,#059669)}
+
+.reporter-chip{
+    position:absolute;bottom:.55rem;left:.6rem;
+    display:flex;align-items:center;gap:.35rem;
+    background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+    border-radius:20px;padding:.22rem .6rem;color:white;font-size:.7rem;
+}
+.rchip-avatar{
+    width:18px;height:18px;border-radius:50%;background:var(--gray-500);
+    overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:.65rem;
+}
+.rchip-avatar img{width:100%;height:100%;object-fit:cover}
+
+.item-card-body{padding:.85rem;display:flex;flex-direction:column;flex:1}
+.item-name{font-size:.95rem;font-weight:700;color:var(--gray-800);margin-bottom:.35rem}
+.item-meta{font-size:.8rem;color:var(--gray-600);margin:.15rem 0;display:flex;align-items:center;gap:.3rem}
+.item-meta i{width:13px;color:var(--primary);flex-shrink:0}
+
+.btn-view{
+    margin-top:auto;
+    display:block;text-align:center;
+    border:2px solid var(--primary);color:var(--primary);
+    border-radius:9px;text-decoration:none;font-weight:600;
+    font-size:.82rem;padding:.45rem .9rem;background:none;transition:all .2s ease;
+}
+.btn-view:hover{background:var(--primary);color:white}
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty-state{
+    grid-column:1/-1;text-align:center;padding:2.5rem;
+    background:var(--gray-50);border-radius:14px;color:var(--gray-600);
+}
+.empty-state i{font-size:2.5rem;display:block;margin-bottom:.65rem;color:var(--gray-400)}
+
+/* ── See-all ────────────────────────────────────────────────────────── */
+.see-all-wrap{text-align:center;margin-top:1.25rem}
+.btn-see-all{
+    display:inline-block;padding:.6rem 1.75rem;
+    border:2px solid var(--primary);color:var(--primary);
+    border-radius:11px;font-weight:600;text-decoration:none;
+    font-size:.88rem;transition:all .2s ease;
+}
+.btn-see-all:hover{background:var(--primary);color:white}
+
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ════════════════════════════════════════════════════════
+   MOBILE  ≤ 900px  — wider breakpoint to catch Redmi/Android phones
+   ════════════════════════════════════════════════════════ */
+@media(max-width:900px){
+    .dashboard-container{padding:.65rem}
+
+    /* Welcome banner — stays horizontal, smaller */
+    .welcome-banner{
+        flex-direction:row;padding:.9rem 1rem;gap:.8rem;
+        margin-bottom:1.1rem;border-radius:14px;
+    }
+    .welcome-banner .avatar{width:46px;height:46px;font-size:1.4rem;flex-shrink:0}
+    .welcome-banner h2{font-size:.93rem;margin-bottom:.15rem}
+    .welcome-banner p{font-size:.72rem;line-height:1.3}
+    .welcome-banner .pill{font-size:.65rem;padding:.1rem .5rem;margin-top:.25rem}
+
+    /* Search panel — smaller & compact */
+    .search-panel{padding:.55rem .7rem;border-radius:10px;margin-bottom:.8rem}
+    .search-panel-title{font-size:.7rem;margin-bottom:.5rem}
+    .search-row{flex-direction:row;flex-wrap:wrap;gap:.3rem}
+    .search-input-wrap{min-width:0;flex:1 1 100%}
+    .search-input-wrap i{font-size:.72rem;left:.6rem}
+    .s-input{font-size:.72rem;padding:.42rem .6rem .42rem 1.8rem;border-radius:7px}
+    .s-select{min-width:0;flex:1 1 calc(50% - .15rem);font-size:.72rem;padding:.42rem .45rem;border-radius:7px}
+    .s-btn{font-size:.72rem;padding:.42rem .7rem;border-radius:7px;flex:1 1 calc(50% - .15rem)}
+
+    /* User results — compact */
+    .user-results-section{margin-bottom:1rem}
+    .user-results-section h4{font-size:.75rem;margin-bottom:.5rem}
+    .user-results-grid{grid-template-columns:1fr;gap:.35rem}
+    .user-card{padding:.5rem;gap:.5rem;border-radius:9px}
+    .user-card-avatar{width:30px;height:30px;font-size:.75rem}
+    .user-card-name{font-size:.72rem}
+    .user-card-email{font-size:.63rem}
+    .user-card-course{font-size:.6rem}
+    .user-card-chat{font-size:.63rem;padding:.2rem .45rem;border-radius:5px}
+
+    /* Feed */
+    .feed-header{flex-direction:column;align-items:flex-start;gap:.4rem;margin-bottom:.9rem}
+    .feed-header h3{font-size:.92rem}
+    .filter-pill{padding:.25rem .65rem;font-size:.7rem}
+
+    /* ★ 4-column grid ★ */
+    .items-grid{
+        grid-template-columns:repeat(4,1fr) !important;
+        gap:.35rem !important;
+    }
+
+    /* Item cards — very compact */
+    .item-card{border-radius:8px}
+    .item-card-image{height:80px}
+    .item-card-image img{height:80px}
+    .type-badge{font-size:.48rem;padding:.12rem .3rem;top:.28rem;right:.28rem}
+    .reporter-chip{display:none}
+    .item-card-body{padding:.4rem}
+    .item-name{font-size:.66rem;margin-bottom:.12rem;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .item-meta{font-size:.58rem;margin:.05rem 0}
+    .item-meta i{width:10px}
+    .btn-view{font-size:.58rem;padding:.28rem .3rem;border-radius:5px;margin-top:.25rem}
+
+    .btn-see-all{font-size:.8rem;padding:.5rem 1.25rem}
+}
+
+/* Very small phones — 3 columns */
+@media(max-width:370px){
+    .items-grid{grid-template-columns:repeat(3,1fr) !important;gap:.3rem !important}
+    .item-card-image{height:65px}
+    .item-name{font-size:.62rem}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="avatar">
+            {% set pic    = user_profile.profile_picture if user_profile else '' %}
+            {% set pic_ok = (user_profile.profile_pic_status == 'approved') if user_profile else false %}
+            {% if pic and pic_ok %}
+                {% if pic.startswith('data:') %}
+                    <img src="{{ pic }}" alt="Avatar">
+                {% else %}
+                    <img src="{{ url_for('static', filename='uploads/profiles/' ~ pic) }}" alt="Avatar">
+                {% endif %}
+            {% else %}
+                <i class="fas fa-user-circle"></i>
+            {% endif %}
+        </div>
+        <div>
+            <h2>Welcome back, {{ session['user']['full_name'].split()[0] }}! 👋</h2>
+            <p>
+                <i class="fas fa-envelope"></i> {{ session['user']['email'] }}
+                {% if session['user'].get('course') %}
+                &nbsp;•&nbsp;<i class="fas fa-graduation-cap"></i> {{ session['user']['course'] }}
+                {% endif %}
+                {% if session['user'].get('year_level') %}
+                &nbsp;•&nbsp; Year {{ session['user']['year_level'] }}
+                {% endif %}
+            </p>
+            <span class="pill"><i class="fas fa-check-circle"></i> Active Member</span>
+        </div>
+    </div>
+
+    <!-- Search Panel -->
+    <div class="search-panel">
+        <div class="search-panel-title">
+            <i class="fas fa-search"></i> Search Items &amp; Users
+        </div>
+        <form method="GET" action="{{ url_for('user.dashboard') }}">
+            <div class="search-row">
+
+                <!-- Keyword -->
+                <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="q" value="{{ search_query or '' }}"
+                           class="s-input" placeholder="Search by item name or user…" autocomplete="off">
+                </div>
+
+                <!-- Category -->
+                <select name="category" class="s-select">
+                    <option value="">All Categories</option>
+                    <option value="Electronics"  {% if category == 'Electronics'  %}selected{% endif %}>Electronics</option>
+                    <option value="Clothing"     {% if category == 'Clothing'     %}selected{% endif %}>Clothing</option>
+                    <option value="Documents"    {% if category == 'Documents'    %}selected{% endif %}>Documents</option>
+                    <option value="Accessories"  {% if category == 'Accessories'  %}selected{% endif %}>Accessories</option>
+                    <option value="Books"        {% if category == 'Books'        %}selected{% endif %}>Books</option>
+                    <option value="Keys"         {% if category == 'Keys'         %}selected{% endif %}>Keys</option>
+                    <option value="Bag"          {% if category == 'Bag'          %}selected{% endif %}>Bag</option>
+                    <option value="Other"        {% if category == 'Other'        %}selected{% endif %}>Other</option>
+                </select>
+
+                <!-- Sort field -->
+                <select name="sort_by" class="s-select">
+                    <option value="date_reported" {% if sort_by == 'date_reported' %}selected{% endif %}>Sort by Date</option>
+                    <option value="name"          {% if sort_by == 'name'          %}selected{% endif %}>Sort by Name</option>
+                    <option value="category"      {% if sort_by == 'category'      %}selected{% endif %}>Sort by Category</option>
+                    <option value="status"        {% if sort_by == 'status'        %}selected{% endif %}>Sort by Status</option>
+                </select>
+
+                <!-- Sort direction -->
+                <select name="order" class="s-select">
+                    <option value="desc" {% if order == 'desc' %}selected{% endif %}>Newest First</option>
+                    <option value="asc"  {% if order == 'asc'  %}selected{% endif %}>Oldest First</option>
+                </select>
+
+                <button type="submit" class="s-btn s-btn-primary">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                {% if search_query or category or sort_by != 'date_reported' or order != 'desc' %}
+                <a href="{{ url_for('user.dashboard') }}" class="s-btn s-btn-clear">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+                {% endif %}
+
+            </div>
+        </form>
+    </div>
+
+    <!-- User Search Results -->
+    {% if search_query and matched_users %}
+    <div class="user-results-section">
+        <h4>
+            <i class="fas fa-users" style="color:var(--primary);"></i>
+            Users matching "{{ search_query }}"
+            <span style="background:var(--gray-100);color:var(--gray-600);border-radius:20px;padding:.1rem .55rem;font-size:.75rem;font-weight:600;">{{ matched_users|length }}</span>
+        </h4>
+        <div class="user-results-grid">
+            {% for u in matched_users %}
+            <div class="user-card">
+                <div class="user-card-avatar">
+                    {% if u.profile_picture and u.profile_pic_status == 'approved' %}
+                        <img src="{% if u.profile_picture.startswith('data:') %}{{ u.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ u.profile_picture) }}{% endif %}"
+                             alt="{{ u.full_name }}"
+                             onerror="this.parentElement.innerHTML='{{ u.full_name[0]|upper if u.full_name else '?' }}'">
+                    {% else %}
+                        {{ u.full_name[0]|upper if u.full_name else '?' }}
+                    {% endif %}
+                </div>
+                <div class="user-card-info">
+                    <div class="user-card-name">{{ u.full_name }}</div>
+                    <div class="user-card-email">{{ u.email }}</div>
+                    {% if u.course %}
+                    <div class="user-card-course">{{ u.course }}{% if u.year_level %} · Year {{ u.year_level }}{% endif %}</div>
+                    {% endif %}
+                </div>
+                {% if u.id != session['user']['id'] %}
+                <a href="{{ url_for('chat.start_conversation', other_user_id=u.id) }}" class="user-card-chat" title="Message">💬</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Community Feed -->
+    <div class="feed-header">
+        <h3><i class="fas fa-stream"></i> Community Lost &amp; Found Feed</h3>
+        <div class="filter-pills">
+            <button class="filter-pill active" onclick="filterFeed('all', this)">All</button>
+            <button class="filter-pill fp-lost" onclick="filterFeed('Lost', this)">
+                <i class="fas fa-exclamation-triangle"></i> Lost
+            </button>
+            <button class="filter-pill fp-found" onclick="filterFeed('Found', this)">
+                <i class="fas fa-box-open"></i> Found
+            </button>
+        </div>
+    </div>
+
+    <div class="items-grid" id="feedGrid">
+        {% if recent_items %}
+            {% for item in recent_items %}
+            <div class="item-card" data-type="{{ item.type }}">
+                <div class="item-card-image">
+                    {% if item.image_filename %}
+                    <img src="{{ url_for('static', filename='uploads/items/' ~ item.image_filename) }}"
+                         alt="{{ item.name }}"
+                         loading="lazy"
+                         decoding="async"
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMzAwIDIwMCI+CiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmMWY1ZjkiLz4KICA8cmVjdCB4PSIxMTUiIHk9IjY1IiB3aWR0aD0iNzAiIGhlaWdodD0iNTUiIHJ4PSI2IiBmaWxsPSIjY2JkNWUxIi8+CiAgPGNpcmNsZSBjeD0iMTUwIiBjeT0iODUiIHI9IjEyIiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHBhdGggZD0iTTExNSAxMjAgbDM1LTI1IDIwIDE4IDE1LTEyIDE1IDE5IiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHRleHQgeD0iMTUwIiB5PSIxNTUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTRhM2I4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD4KPC9zdmc+'">
+                    {% else %}
+                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMzAwIDIwMCI+CiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmMWY1ZjkiLz4KICA8cmVjdCB4PSIxMTUiIHk9IjY1IiB3aWR0aD0iNzAiIGhlaWdodD0iNTUiIHJ4PSI2IiBmaWxsPSIjY2JkNWUxIi8+CiAgPGNpcmNsZSBjeD0iMTUwIiBjeT0iODUiIHI9IjEyIiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHBhdGggZD0iTTExNSAxMjAgbDM1LTI1IDIwIDE4IDE1LTEyIDE1IDE5IiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHRleHQgeD0iMTUwIiB5PSIxNTUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTRhM2I4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD4KPC9zdmc+" alt="No image">
+                    {% endif %}
+
+                    <span class="type-badge type-{{ item.type }}">{{ item.type | upper }}</span>
+
+                    <div class="reporter-chip">
+                        <div class="rchip-avatar">
+                            {% if item.reporter_pic and item.reporter_pic_ok %}
+                                {% if item.reporter_pic.startswith('data:') %}
+                                    <img src="{{ item.reporter_pic }}" alt="">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='uploads/profiles/' ~ item.reporter_pic) }}" alt="">
+                                {% endif %}
+                            {% else %}👤{% endif %}
+                        </div>
+                        <span>{{ item.reporter_name or 'Unknown' }}</span>
+                    </div>
+                </div>
+
+                <div class="item-card-body">
+                    <div class="item-name">{{ item.name }}</div>
+                    <p class="item-meta"><i class="fas fa-map-marker-alt"></i> {{ item.location }}</p>
+                    {% if item.category %}
+                    <p class="item-meta"><i class="fas fa-tag"></i> {{ item.category }}</p>
+                    {% endif %}
+                    <p class="item-meta"><i class="fas fa-calendar-alt"></i> {{ item.date_reported }}</p>
+                    <a href="{{ url_for('item.item_detail', item_id=item.id) }}" class="btn-view">
+                        View <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No items found. Try adjusting your search.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if recent_items %}
+    <div class="see-all-wrap">
+        <a href="{{ url_for('user.search_items') }}" class="btn-see-all">
+            See All Items <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function filterFeed(type, btn) {
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#feedGrid .item-card').forEach(card => {
+        card.style.display = (type === 'all' || card.dataset.type === type) ? '' : 'none';
+    });
+    const visible = [...document.querySelectorAll('#feedGrid .item-card')].filter(c => c.style.display !== 'none');
+    let empty = document.querySelector('#feedGrid .empty-filter');
+    if (visible.length === 0) {
+        if (!empty) {
+            empty = document.createElement('div');
+            empty.className = 'empty-state empty-filter';
+            empty.innerHTML = '<i class="fas fa-filter"></i><p>No ' + type + ' items found.</p>';
+            document.getElementById('feedGrid').appendChild(empty);
+        }
+    } else if (empty) { empty.remove(); }
+}
+
+const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity='1'; e.target.style.transform='translateY(0)'; }});
+}, { threshold: 0.05 });
+document.querySelectorAll('.item-card').forEach((el, i) => {
+    el.style.opacity='0'; el.style.transform='translateY(18px)';
+    el.style.transition=`all .4s ease ${i*0.04}s`;
+    io.observe(el);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+/*
+ * static/css/login.css — NEMSU Lost & Found Login Page
+ * Redesigned: elegant gradient background, refined card, full mobile support
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+    --color-primary:      #2563eb;
+    --color-primary-dark: #1d4ed8;
+    --color-bg:           #eff6ff;
+    --color-surface:      #ffffff;
+    --color-text:         #0f172a;
+    --color-text-muted:   #64748b;
+    --color-border:       #e2e8f0;
+    --shadow-lg:          0 20px 48px rgba(0,0,0,.14);
+    --radius-lg:          20px;
+    --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body:    'DM Sans', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.login-body {
+    font-family: var(--font-body);
+    background: linear-gradient(145deg, #1e3a8a 0%, #2563eb 40%, #0ea5e9 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative background circles */
+.login-body::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.04);
+    top: -200px; right: -150px;
+    pointer-events: none;
+}
+.login-body::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.04);
+    bottom: -100px; left: -100px;
+    pointer-events: none;
+}
+
+.login-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 2.75rem 2.25rem 2.25rem;
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,.1);
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.1rem;
+    position: relative;
+    z-index: 1;
+    animation: cardIn .4s cubic-bezier(.22,1,.36,1);
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(20px) scale(.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.login-logo-wrap {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(37,99,235,.18);
+    margin-bottom: .25rem;
+}
+.login-logo { font-size: 2.5rem; line-height: 1; }
+
+.login-logo-img {
+    width: 56px; height: 56px;
+    border-radius: 14px; object-fit: cover;
+}
+
+.login-title {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--color-text);
+    line-height: 1.15;
+    letter-spacing: -.025em;
+}
+
+.login-subtitle {
+    font-size: .9rem;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+    margin-top: -.25rem;
+}
+
+/* Divider */
+.login-divider {
+    width: 100%;
+    display: flex; align-items: center; gap: .75rem;
+    font-size: .78rem; color: var(--color-text-muted);
+}
+.login-divider::before, .login-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--color-border);
+}
+
+/* Google button */
+.google-btn {
+    display: flex; align-items: center; justify-content: center; gap: .65rem;
+    width: 100%; padding: .8rem 1.25rem;
+    background: #ffffff; border: 1.5px solid #e2e8f0;
+    border-radius: 10px; font-size: .95rem; font-weight: 600;
+    font-family: var(--font-display); color: var(--color-text);
+    cursor: pointer; text-decoration: none;
+    transition: box-shadow .15s, border-color .15s, background .15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+}
+.google-btn:hover {
+    background: #f8fafc; border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0,0,0,.10);
+    text-decoration: none;
+}
+.google-icon { width: 20px; height: 20px; display: inline-block; flex-shrink: 0; }
+
+.login-notice {
+    font-size: .77rem; color: var(--color-text-muted);
+    line-height: 1.55; border-top: 1px solid var(--color-border);
+    padding-top: 1rem; width: 100%;
+}
+
+/* Flash messages inside login */
+.flash {
+    width: 100%; padding: .7rem 1rem; border-radius: 8px;
+    font-size: .875rem; border: 1px solid transparent; font-weight: 500;
+    text-align: left;
+}
+.flash-success { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.flash-error   { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.flash-info    { background: #e0f2fe; border-color: #7dd3fc; color: #0c4a6e; }
+.flash-warning { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+
+@media (max-width: 480px) {
+    .login-card { padding: 2rem 1.5rem 1.75rem; }
+    .login-title { font-size: 1.4rem; }
+}

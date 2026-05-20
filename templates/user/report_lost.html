@@ -1,0 +1,679 @@
+{% extends "base.html" %}
+{% block title %}Report Lost Item | NEMSU Lost & Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user/report_lost.css') }}" />
+
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --secondary: #f59e0b;
+    --success: #059669;
+    --danger: #dc2626;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-600: #6b7280;
+    --gray-800: #1f2937;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.page-header p {
+    color: var(--gray-600);
+    font-size: 1rem;
+}
+
+/* Form Container */
+.form-container {
+    max-width: 680px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.form-card {
+    padding: 2rem;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 1.5rem;
+    animation: fadeInUp 0.5s ease;
+    animation-fill-mode: both;
+}
+
+.form-group:nth-child(1) { animation-delay: 0.05s; }
+.form-group:nth-child(2) { animation-delay: 0.1s; }
+.form-group:nth-child(3) { animation-delay: 0.15s; }
+.form-group:nth-child(4) { animation-delay: 0.2s; }
+.form-group:nth-child(5) { animation-delay: 0.25s; }
+.form-group:nth-child(6) { animation-delay: 0.3s; }
+.form-group:nth-child(7) { animation-delay: 0.35s; }
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    font-size: 0.9rem;
+}
+
+label i {
+    margin-right: 0.5rem;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Flash Messages */
+.flash {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    animation: slideInRight 0.3s ease;
+}
+
+.flash-success {
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid var(--success);
+}
+
+.flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid var(--danger);
+}
+
+.flash-warning {
+    background: #fed7aa;
+    color: #92400e;
+    border-left: 4px solid var(--secondary);
+}
+
+/* Image Upload */
+.image-upload-area {
+    border: 2px dashed var(--gray-200);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    background: var(--gray-50);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.image-upload-area:hover {
+    border-color: var(--primary);
+    background: #eff6ff;
+    transform: translateY(-2px);
+}
+
+.image-upload-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    padding: 0;
+}
+
+#uploadPlaceholder {
+    color: var(--gray-600);
+}
+
+#uploadPlaceholder i {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 12px;
+    margin-top: 1rem;
+    display: none;
+    box-shadow: var(--shadow-md);
+}
+
+.capture-btn {
+    margin-top: 0.75rem;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.capture-btn:hover {
+    background: var(--gray-200);
+    transform: translateY(-1px);
+}
+
+/* Location Picker */
+.location-picker {
+    border: 2px solid var(--gray-200);
+    border-radius: 16px;
+    overflow: hidden;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.location-picker:hover {
+    border-color: var(--primary);
+}
+
+.location-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+    border-bottom: 1px solid var(--gray-200);
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+#map {
+    height: 300px;
+    width: 100%;
+}
+
+.location-controls {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.use-location-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.use-location-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.location-status {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    padding: 0.5rem;
+    background: var(--gray-50);
+    border-radius: 8px;
+}
+
+.location-set {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.location-coords {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    font-family: monospace;
+    background: var(--gray-100);
+    padding: 0.5rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* Submit Button */
+.btn-submit {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    padding: 1rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+/* Required field indicator */
+.required::after {
+    content: '*';
+    color: var(--danger);
+    margin-left: 0.25rem;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-card {
+        padding: 1.5rem;
+    }
+    
+    .page-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    #map {
+        height: 250px;
+    }
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn-submit.loading {
+    background: var(--gray-600);
+}
+
+/* Tooltip styles */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background: var(--gray-800);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-exclamation-triangle"></i> Report a Lost Item</h2>
+    <p>Fill in the details below to help the community find your lost item</p>
+</div>
+
+<div class="form-container">
+    <div class="form-card">
+        <form method="POST" action="{{ url_for('user.report_lost') }}" enctype="multipart/form-data" id="reportForm">
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for cat, msg in messages %}
+                        <div class="flash flash-{{ cat }}">
+                            <i class="fas {% if cat == 'success' %}fa-check-circle{% elif cat == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                            {{ msg }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Item Name -->
+            <div class="form-group">
+                <label class="required"><i class="fas fa-tag"></i> Item Name</label>
+                <input type="text" name="name" placeholder="e.g., Black Laptop Bag, iPhone 13, etc." required>
+            </div>
+
+            <!-- Category -->
+            <div class="form-group">
+                <label><i class="fas fa-folder"></i> Category</label>
+                <select name="category">
+                    <option value="">-- Select Category --</option>
+                    <option>📱 Electronics</option>
+                    <option>🎒 Bags</option>
+                    <option>👕 Clothing</option>
+                    <option>📄 Documents</option>
+                    <option>🔑 Keys</option>
+                    <option>💳 Wallet/ID</option>
+                    <option>📚 Books</option>
+                    <option>💻 Accessories</option>
+                    <option>🔧 Tools</option>
+                    <option>🎓 School Supplies</option>
+                    <option>⚽ Sports Equipment</option>
+                    <option>💊 Personal Items</option>
+                    <option>📦 Others</option>
+                </select>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label><i class="fas fa-align-left"></i> Description</label>
+                <textarea name="description" placeholder="Describe the item in detail (color, brand, distinguishing marks, etc.)"></textarea>
+            </div>
+
+            <!-- Last Seen Location -->
+            <div class="form-group">
+                <label class="required"><i class="fas fa-map-marker-alt"></i> Last Seen Location</label>
+                <input type="text" name="location" id="locationText" placeholder="e.g., Library 2nd Floor, CSC Building, etc." required>
+            </div>
+
+            <!-- Date Lost -->
+            <div class="form-group">
+                <label class="required"><i class="fas fa-calendar-alt"></i> Date Lost</label>
+                <input type="date" name="date_reported" required>
+            </div>
+
+            <!-- Map Section -->
+            <div class="form-group">
+                <label><i class="fas fa-location-dot"></i> Your Current Location (Optional)</label>
+                
+                <div class="location-picker">
+                    <div class="location-picker-header">
+                        <i class="fas fa-draw-polygon"></i>
+                        <span>Pin your location on the map</span>
+                    </div>
+
+                    <div id="map"></div>
+
+                    <div class="location-controls">
+                        <button type="button" class="use-location-btn" onclick="useMyLocation()">
+                            <i class="fas fa-location-arrow"></i> Use My Current Location
+                        </button>
+
+                        <div id="locationStatus" class="location-status">
+                            <i class="fas fa-info-circle"></i> Click on the map or use GPS
+                        </div>
+                        <div id="locationCoords" class="location-coords" style="display: none;"></div>
+
+                        <input type="hidden" name="pickup_lat" id="pickupLat">
+                        <input type="hidden" name="pickup_lng" id="pickupLng">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-group">
+                <label><i class="fas fa-camera"></i> Photo (Optional)</label>
+
+                <div class="image-upload-area" onclick="document.getElementById('itemImage').click()">
+                    <input type="file" name="item_image" id="itemImage" accept="image/*" onchange="previewImage(event)">
+                    <div id="uploadPlaceholder">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <div>Click or drag to upload</div>
+                        <small style="font-size: 0.75rem;">PNG, JPG up to 5MB</small>
+                    </div>
+                    <img id="imagePreview" class="image-preview">
+                </div>
+
+                <button type="button" class="capture-btn" onclick="openCamera()">
+                    <i class="fas fa-camera-retro"></i> Take a Photo
+                </button>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment"
+                       style="display:none" onchange="previewImage(event)">
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <i class="fas fa-paper-plane"></i> Submit Report
+            </button>
+            
+            <p style="text-align: center; margin-top: 1rem; font-size: 0.8rem; color: var(--gray-600);">
+                <i class="fas fa-lock"></i> Your information will be kept confidential
+            </p>
+        </form>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Initialize map
+const map = L.map('map').setView([9.0191, 125.9940], 16);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+let marker;
+let isLocationSet = false;
+
+// Map click handler
+map.on('click', e => {
+    if(marker) {
+        marker.setLatLng(e.latlng);
+    } else {
+        marker = L.marker(e.latlng, {draggable: true}).addTo(map);
+        marker.on('dragend', function(e) {
+            updateCoords(e.target.getLatLng());
+        });
+    }
+    updateCoords(e.latlng);
+    showLocationStatus('Location pinned on map', 'success');
+});
+
+function updateCoords(latlng){
+    document.getElementById('pickupLat').value = latlng.lat.toFixed(6);
+    document.getElementById('pickupLng').value = latlng.lng.toFixed(6);
+    
+    const coordsElement = document.getElementById('locationCoords');
+    coordsElement.textContent = `📍 ${latlng.lat.toFixed(6)}°, ${latlng.lng.toFixed(6)}°`;
+    coordsElement.style.display = 'block';
+    isLocationSet = true;
+}
+
+function useMyLocation(){
+    const statusDiv = document.getElementById('locationStatus');
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting your location...';
+    
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const latlng = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+            map.setView(latlng, 18);
+            
+            if(marker) {
+                marker.setLatLng(latlng);
+            } else {
+                marker = L.marker(latlng, {draggable: true}).addTo(map);
+                marker.on('dragend', function(e) {
+                    updateCoords(e.target.getLatLng());
+                });
+            }
+            
+            updateCoords(latlng);
+            showLocationStatus('✓ Location acquired successfully!', 'success');
+            
+            // Reverse geocoding (optional)
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.display_name) {
+                        const locationInput = document.getElementById('locationText');
+                        if(!locationInput.value) {
+                            locationInput.value = data.display_name.split(',')[0];
+                        }
+                    }
+                })
+                .catch(err => console.log('Reverse geocoding failed:', err));
+        },
+        err => {
+            let errorMsg = 'Unable to get location. ';
+            switch(err.code) {
+                case err.PERMISSION_DENIED:
+                    errorMsg += 'Please allow location access.';
+                    break;
+                case err.POSITION_UNAVAILABLE:
+                    errorMsg += 'Location information unavailable.';
+                    break;
+                case err.TIMEOUT:
+                    errorMsg += 'Location request timed out.';
+                    break;
+            }
+            showLocationStatus(errorMsg, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+function showLocationStatus(message, type) {
+    const statusDiv = document.getElementById('locationStatus');
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+    const color = type === 'success' ? '#059669' : '#dc2626';
+    statusDiv.innerHTML = `<i class="fas ${icon}" style="color: ${color}"></i> ${message}`;
+    statusDiv.style.color = color;
+    
+    setTimeout(() => {
+        if(!isLocationSet) {
+            statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Click on the map or use GPS';
+            statusDiv.style.color = '#6b7280';
+        }
+    }, 3000);
+}
+
+function previewImage(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    
+    // Validate file size (5MB limit)
+    if(file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB');
+        e.target.value = '';
+        return;
+    }
+    
+    // Validate file type
+    if(!file.type.match('image.*')) {
+        alert('Please select an image file');
+        e.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const preview = document.getElementById('imagePreview');
+        preview.src = ev.target.result;
+        preview.style.display = 'block';
+        document.getElementById('uploadPlaceholder').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function openCamera(){
+    document.getElementById('cameraInput').click();
+}
+
+// Form submission handling
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.classList.add('loading');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    
+    // Basic validation
+    const name = document.querySelector('input[name="name"]').value.trim();
+    const location = document.getElementById('locationText').value.trim();
+    const date = document.querySelector('input[name="date_reported"]').value;
+    
+    if(!name || !location || !date) {
+        e.preventDefault();
+        alert('Please fill in all required fields (*)');
+        submitBtn.classList.remove('loading');
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+        return false;
+    }
+    
+    return true;
+});
+
+// Set max date to today
+const dateInput = document.querySelector('input[type="date"]');
+const today = new Date().toISOString().split('T')[0];
+dateInput.setAttribute('max', today);
+
+// Add placeholder icons to inputs
+document.querySelectorAll('input, select, textarea').forEach(input => {
+    input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'translateX(5px)';
+    });
+    input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'translateX(0)';
+    });
+});
+</script>
+{% endblock %}

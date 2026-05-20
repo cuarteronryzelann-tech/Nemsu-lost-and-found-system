@@ -1,0 +1,730 @@
+{% extends "base.html" %}
+{% block title %}Report Found Item | NEMSU Lost & Found{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user/report_found.css') }}" />
+
+<style>
+:root {
+    --primary: #16a34a;
+    --primary-dark: #15803d;
+    --primary-light: #dcfce7;
+    --secondary: #f59e0b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-600: #6b7280;
+    --gray-800: #1f2937;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* Page Header */
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.page-header h2 i {
+    color: var(--primary);
+}
+
+.page-header p {
+    color: var(--gray-600);
+    font-size: 1rem;
+}
+
+/* Container & Card */
+.container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 1.5rem;
+    animation: fadeInUp 0.5s ease;
+    animation-fill-mode: both;
+}
+
+.form-group:nth-child(1) { animation-delay: 0.05s; }
+.form-group:nth-child(2) { animation-delay: 0.1s; }
+.form-group:nth-child(3) { animation-delay: 0.15s; }
+.form-group:nth-child(4) { animation-delay: 0.2s; }
+.form-group:nth-child(5) { animation-delay: 0.25s; }
+.form-group:nth-child(6) { animation-delay: 0.3s; }
+.form-group:nth-child(7) { animation-delay: 0.35s; }
+
+.form-group label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-group label i {
+    color: var(--primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Required Field */
+.required::after {
+    content: '*';
+    color: var(--danger);
+    margin-left: 0.25rem;
+}
+
+/* Image Upload */
+.image-upload-area {
+    border: 2px dashed var(--gray-200);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    background: var(--gray-50);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.image-upload-area:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    transform: translateY(-2px);
+}
+
+.image-upload-area input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    padding: 0;
+    border: none;
+}
+
+.image-upload-area p {
+    margin: 0;
+    color: var(--gray-600);
+}
+
+.image-upload-area p i {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+}
+
+.image-preview {
+    width: 100%;
+    max-height: 250px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-top: 1rem;
+    display: none;
+    box-shadow: var(--shadow-md);
+}
+
+/* Location Picker */
+.location-picker {
+    border: 2px solid var(--gray-200);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.location-picker:hover {
+    border-color: var(--primary);
+}
+
+#map {
+    width: 100%;
+    height: 280px;
+    background: var(--gray-100);
+}
+
+.location-controls {
+    padding: 1rem;
+    background: var(--gray-50);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.use-location-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.use-location-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.location-status {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    padding: 0.5rem;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.location-coords {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    font-family: monospace;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* Submit Button */
+.btn-submit {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+.btn-submit i {
+    font-size: 1.1rem;
+}
+
+/* Flash Messages */
+.flash {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    animation: slideInRight 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.flash-success {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-left: 4px solid var(--primary);
+}
+
+.flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid var(--danger);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Loading State */
+.btn-submit.loading {
+    background: var(--gray-600);
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 0.75rem;
+    }
+    
+    .card {
+        padding: 1.5rem;
+    }
+    
+    .page-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    #map {
+        height: 240px;
+    }
+    
+    .form-group label {
+        font-size: 0.8rem;
+    }
+}
+
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background: var(--gray-800);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+    margin-bottom: 0.5rem;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="page-header">
+        <h2><i class="fas fa-box-open"></i> Report Found Item</h2>
+        <p>Help return lost items to their owners by reporting what you found</p>
+    </div>
+
+    <div class="card">
+        <form method="POST" enctype="multipart/form-data" id="reportForm">
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for cat, msg in messages %}
+                        <div class="flash flash-{{ cat }}">
+                            <i class="fas {% if cat == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %}"></i>
+                            <span>{{ msg }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Item Name -->
+            <div class="form-group">
+                <label class="required">
+                    <i class="fas fa-tag"></i> Item Name
+                </label>
+                <input type="text" name="name" placeholder="e.g., Black Wallet, iPhone 14, Backpack" required>
+            </div>
+
+            <!-- Category -->
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-folder"></i> Category
+                </label>
+                <select name="category">
+                    <option value="">-- Select Category --</option>
+                    <option>📱 Electronics</option>
+                    <option>🎒 Bags & Backpacks</option>
+                    <option>👕 Clothing & Accessories</option>
+                    <option>🔑 Keys</option>
+                    <option>📄 Documents & IDs</option>
+                    <option>💳 Wallets & Cards</option>
+                    <option>📚 Books & School Supplies</option>
+                    <option>💻 Laptops & Tablets</option>
+                    <option>⌚ Watches & Jewelry</option>
+                    <option>🔧 Tools & Equipment</option>
+                    <option>⚽ Sports & Recreation</option>
+                    <option>💊 Medical Items</option>
+                    <option>📦 Others</option>
+                </select>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-align-left"></i> Description
+                </label>
+                <textarea name="description" placeholder="Describe the item in detail (color, brand, distinguishing features, etc.)"></textarea>
+            </div>
+
+            <!-- Location Found -->
+            <div class="form-group">
+                <label class="required">
+                    <i class="fas fa-map-marker-alt"></i> Where Found
+                </label>
+                <input type="text" name="location" id="locationText" placeholder="e.g., Library, CSC Building, Gymnasium" required>
+            </div>
+
+            <!-- Date Found -->
+            <div class="form-group">
+                <label class="required">
+                    <i class="fas fa-calendar-alt"></i> Date Found
+                </label>
+                <input type="date" name="date_reported" required>
+            </div>
+
+            <!-- Map Section -->
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-location-dot"></i> Pickup Location (Optional)
+                    <span data-tooltip="Pin the exact location where you found the item" style="font-size: 0.75rem; color: var(--gray-600);">
+                        <i class="fas fa-question-circle"></i>
+                    </span>
+                </label>
+
+                <div class="location-picker">
+                    <div id="map"></div>
+
+                    <div class="location-controls">
+                        <button type="button" class="use-location-btn" onclick="useMyLocation()">
+                            <i class="fas fa-location-arrow"></i> Use My Current Location
+                        </button>
+
+                        <div id="locationStatus" class="location-status">
+                            <i class="fas fa-info-circle"></i> Click on the map to pin location
+                        </div>
+                        <div id="locationCoords" class="location-coords" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <input type="hidden" name="pickup_lat" id="pickupLat">
+                <input type="hidden" name="pickup_lng" id="pickupLng">
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-camera"></i> Upload Image (Optional)
+                </label>
+
+                <div class="image-upload-area" onclick="document.getElementById('itemImage').click()">
+                    <input type="file" name="item_image" id="itemImage" accept="image/*" onchange="previewImage(event)">
+                    <p>
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        Click or drag to upload
+                        <br>
+                        <small style="font-size: 0.7rem;">PNG, JPG up to 5MB</small>
+                    </p>
+                    <img id="imagePreview" class="image-preview">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <i class="fas fa-paper-plane"></i> Submit Report
+            </button>
+            
+            <p style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--gray-600);">
+                <i class="fas fa-lock"></i> Your contact information will only be shared with potential owners
+            </p>
+        </form>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// Initialize Map
+const map = L.map('map').setView([9.0191, 125.9940], 16);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+}).addTo(map);
+
+let marker;
+let isLocationSet = false;
+
+// Map click handler
+map.on('click', function(e) {
+    if (marker) {
+        marker.setLatLng(e.latlng);
+    } else {
+        marker = L.marker(e.latlng, {draggable: true}).addTo(map);
+        marker.on('dragend', function(e) {
+            updateLocationInfo(e.target.getLatLng());
+        });
+    }
+    
+    updateLocationInfo(e.latlng);
+    showLocationStatus('✓ Location pinned successfully', 'success');
+});
+
+function updateLocationInfo(latlng) {
+    document.getElementById('pickupLat').value = latlng.lat.toFixed(6);
+    document.getElementById('pickupLng').value = latlng.lng.toFixed(6);
+    
+    const coordsElement = document.getElementById('locationCoords');
+    coordsElement.textContent = `📍 ${latlng.lat.toFixed(6)}°, ${latlng.lng.toFixed(6)}°`;
+    coordsElement.style.display = 'block';
+    isLocationSet = true;
+}
+
+// Use GPS Location
+function useMyLocation() {
+    const statusDiv = document.getElementById('locationStatus');
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting your location...';
+    
+    if (!navigator.geolocation) {
+        showLocationStatus('❌ Geolocation is not supported by your browser', 'error');
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const latlng = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+            map.setView([latlng.lat, latlng.lng], 18);
+            
+            if (marker) {
+                marker.setLatLng(latlng);
+            } else {
+                marker = L.marker(latlng, {draggable: true}).addTo(map);
+                marker.on('dragend', function(e) {
+                    updateLocationInfo(e.target.getLatLng());
+                });
+            }
+            
+            updateLocationInfo(latlng);
+            showLocationStatus('✓ Location acquired successfully!', 'success');
+            
+            // Optional: Reverse geocoding to get address
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.display_name && !document.getElementById('locationText').value) {
+                        const locationInput = document.getElementById('locationText');
+                        const shortAddress = data.display_name.split(',')[0];
+                        locationInput.placeholder = `e.g., ${shortAddress}`;
+                    }
+                })
+                .catch(err => console.log('Reverse geocoding error:', err));
+        },
+        err => {
+            let errorMsg = 'Unable to get location. ';
+            switch(err.code) {
+                case err.PERMISSION_DENIED:
+                    errorMsg += 'Please allow location access.';
+                    break;
+                case err.POSITION_UNAVAILABLE:
+                    errorMsg += 'Location information unavailable.';
+                    break;
+                case err.TIMEOUT:
+                    errorMsg += 'Location request timed out.';
+                    break;
+            }
+            showLocationStatus(`❌ ${errorMsg}`, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+function showLocationStatus(message, type) {
+    const statusDiv = document.getElementById('locationStatus');
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+    const color = type === 'success' ? '#16a34a' : '#ef4444';
+    statusDiv.innerHTML = `<i class="fas ${icon}" style="color: ${color}"></i> ${message}`;
+    
+    setTimeout(() => {
+        if (!isLocationSet) {
+            statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Click on the map to pin location';
+        }
+    }, 3000);
+}
+
+// Image Preview
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        event.target.value = '';
+        return;
+    }
+    
+    // Validate file type
+    if (!file.type.match('image.*')) {
+        alert('Please select an image file');
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = document.getElementById('imagePreview');
+        img.src = e.target.result;
+        img.style.display = 'block';
+        
+        // Hide placeholder text
+        const placeholder = document.querySelector('.image-upload-area p');
+        if (placeholder) {
+            placeholder.style.opacity = '0.5';
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+// Form Submission Handler
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    const name = document.querySelector('input[name="name"]').value.trim();
+    const location = document.getElementById('locationText').value.trim();
+    const date = document.querySelector('input[name="date_reported"]').value;
+    
+    // Validate required fields
+    if (!name || !location || !date) {
+        e.preventDefault();
+        alert('Please fill in all required fields (*)');
+        return false;
+    }
+    
+    // Show loading state
+    submitBtn.classList.add('loading');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting Report...';
+    
+    return true;
+});
+
+// Set max date to today
+const dateInput = document.querySelector('input[type="date"]');
+const today = new Date().toISOString().split('T')[0];
+dateInput.setAttribute('max', today);
+dateInput.value = today; // Set default to today
+
+// Add focus animations
+document.querySelectorAll('.form-group input, .form-group select, .form-group textarea').forEach(input => {
+    input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'translateX(5px)';
+    });
+    input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'translateX(0)';
+    });
+});
+
+// Drag and drop for image upload
+const uploadArea = document.querySelector('.image-upload-area');
+if (uploadArea) {
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#16a34a';
+        uploadArea.style.background = '#dcfce7';
+    });
+    
+    uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#e5e7eb';
+        uploadArea.style.background = '#f9fafb';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.match('image.*')) {
+            const input = document.getElementById('itemImage');
+            input.files = e.dataTransfer.files;
+            previewImage({target: input});
+        }
+        uploadArea.style.borderColor = '#e5e7eb';
+        uploadArea.style.background = '#f9fafb';
+    });
+}
+</script>
+
+{% endblock %}

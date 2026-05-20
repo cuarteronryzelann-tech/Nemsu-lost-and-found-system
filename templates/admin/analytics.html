@@ -1,0 +1,715 @@
+{% extends "base.html" %}
+{% block title %}Analytics | NEMSU Admin{% endblock %}
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+/* Page Header */
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.page-header h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.page-header h2 i {
+    color: var(--primary);
+}
+
+.page-header p {
+    color: var(--gray-600);
+    font-size: 0.95rem;
+}
+
+/* Analytics Grid */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card-sm {
+    background: white;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card-sm::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--info));
+}
+
+.stat-card-sm:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-xl);
+}
+
+.stat-card-sm .icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card-sm .val {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    line-height: 1.2;
+}
+
+.stat-card-sm .lbl {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+/* Active Indicator */
+.active-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pulse {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 1.5s infinite;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+}
+
+/* Chart Cards */
+.chart-card {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.chart-card:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.chart-card h3 {
+    margin: 0 0 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chart-card h3 i {
+    color: var(--primary);
+}
+
+/* Complexity Grid */
+.complexity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.complexity-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    border-left: 4px solid var(--primary);
+    transition: all 0.3s ease;
+}
+
+.complexity-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.complexity-card h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.complexity-card .desc {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.n-badge {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    color: var(--primary);
+    border-radius: 8px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+/* Complexity Table */
+.complexity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.complexity-table th {
+    background: var(--gray-50);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    color: var(--gray-600);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.complexity-table td {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--gray-100);
+    color: var(--gray-700);
+    font-family: monospace;
+}
+
+/* Space Cards */
+.space-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    border-left: 4px solid var(--success);
+    transition: all 0.3s ease;
+}
+
+.space-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.space-card .value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--gray-800);
+}
+
+.space-card .unit {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+.space-card .complexity-badge {
+    background: #d1fae5;
+    color: #065f46;
+    border-radius: 8px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+.space-card .label {
+    margin-top: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--gray-800);
+}
+
+.space-card .note {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .complexity-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-card {
+        padding: 1rem;
+    }
+    
+    .stat-card-sm .val {
+        font-size: 1.5rem;
+    }
+}
+
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background: var(--gray-800);
+    color: white;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+    margin-bottom: 0.5rem;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+
+/* Loading Animation */
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+.loading {
+    background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="fas fa-chart-line"></i> System Analytics</h2>
+    <p>Real-time insights into system usage, performance, and algorithm complexity</p>
+</div>
+
+<!-- Overview Stats -->
+<div class="analytics-grid">
+    <div class="stat-card-sm">
+        <div class="icon"><i class="fas fa-users"></i></div>
+        <div class="val">{{ total_users }}</div>
+        <div class="lbl">Registered Users</div>
+    </div>
+    <div class="stat-card-sm">
+        <div class="icon"><i class="fas fa-boxes"></i></div>
+        <div class="val">{{ total_items }}</div>
+        <div class="lbl">Total Items</div>
+    </div>
+    <div class="stat-card-sm">
+        <div class="icon"><i class="fas fa-clipboard-list"></i></div>
+        <div class="val">{{ total_claims }}</div>
+        <div class="lbl">Total Claims</div>
+    </div>
+    <div class="stat-card-sm">
+        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="val">{{ total_lost }}</div>
+        <div class="lbl">Lost Items</div>
+    </div>
+    <div class="stat-card-sm">
+        <div class="icon"><i class="fas fa-box-open"></i></div>
+        <div class="val">{{ total_found }}</div>
+        <div class="lbl">Found Items</div>
+    </div>
+    <div class="stat-card-sm">
+        <div class="icon"><i class="fas fa-check-circle"></i></div>
+        <div class="val">{{ total_returned }}</div>
+        <div class="lbl">Items Returned</div>
+    </div>
+    <div class="stat-card-sm" style="border-left-color: var(--success);">
+        <div class="active-indicator">
+            <div class="pulse"></div>
+            <div class="val" style="font-size: 1.8rem;">{{ active_30 }}</div>
+        </div>
+        <div class="lbl">
+            <i class="fas fa-clock"></i> Active Users (30 min)
+        </div>
+    </div>
+    <div class="stat-card-sm" style="border-left-color: var(--info);">
+        <div class="icon"><i class="fas fa-bolt"></i></div>
+        <div class="val">{{ active_5 }}</div>
+        <div class="lbl">
+            <i class="fas fa-charging-station"></i> Active Users (5 min)
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+    <div class="chart-card">
+        <h3>
+            <i class="fas fa-chart-bar"></i>
+            Items Reported Per Month
+        </h3>
+        <canvas id="itemsChart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>
+            <i class="fas fa-chart-line"></i>
+            User Registrations Per Month
+        </h3>
+        <canvas id="usersChart" height="200"></canvas>
+    </div>
+</div>
+
+<!-- Time Complexity Analysis -->
+<h3 style="margin: 1rem 0 1rem; font-size: 1.2rem; color: var(--gray-800);">
+    <i class="fas fa-hourglass-half"></i> Time Complexity Analysis
+</h3>
+<div class="complexity-grid">
+    {% for key, algo in complexity.items() %}
+    <div class="complexity-card">
+        <h4>
+            {{ algo.name }}
+            <span class="n-badge">
+                <i class="fas fa-database"></i> n = {{ algo.n }}
+            </span>
+        </h4>
+        <p class="desc">{{ algo.description }}</p>
+        <table class="complexity-table">
+            <thead>
+                <tr>
+                    <th>Case</th>
+                    <th>Time Complexity</th>
+                    <th>Space</th>
+                    <th>Est. Steps</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><i class="fas fa-check-circle" style="color: var(--success);"></i> Best</td>
+                    <td style="color: var(--success); font-weight: 700;">{{ algo.best }}</td>
+                    <td>{{ algo.space }}</td>
+                    <td>{{ algo.steps_best }}</td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-chart-line" style="color: var(--warning);"></i> Average</td>
+                    <td style="color: var(--warning); font-weight: 700;">{{ algo.average }}</td>
+                    <td>{{ algo.space }}</td>
+                    <td>{{ algo.steps_avg }}</td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Worst</td>
+                    <td style="color: var(--danger); font-weight: 700;">{{ algo.worst }}</td>
+                    <td>{{ algo.space }}</td>
+                    <td>{{ algo.steps_worst }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Space Complexity Analysis -->
+<h3 style="margin: 1rem 0 1rem; font-size: 1.2rem; color: var(--gray-800);">
+    <i class="fas fa-memory"></i> Space Complexity Analysis
+</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    {% for key, s in space.items() %}
+    <div class="space-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div class="value">{{ s.value }}</div>
+                <div class="unit">{{ s.unit }}</div>
+            </div>
+            <span class="complexity-badge">
+                <i class="fas fa-chart-simple"></i> {{ s.complexity }}
+            </span>
+        </div>
+        <div class="label">
+            <i class="fas fa-tag"></i> {{ s.label }}
+        </div>
+        <div class="note">
+            <i class="fas fa-info-circle"></i> {{ s.note }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- System Performance Simulation -->
+<div class="chart-card">
+    <h3>
+        <i class="fas fa-tachometer-alt"></i>
+        System Performance Under Load
+    </h3>
+    <p style="font-size: 0.85rem; color: var(--gray-600); margin: -0.5rem 0 1rem;">
+        <i class="fas fa-chart-line"></i> Estimated operation time vs. number of records (theoretical based on algorithm complexity)
+    </p>
+    <canvas id="loadChart" height="160"></canvas>
+    <div style="margin-top: 1rem; padding: 0.75rem; background: var(--gray-50); border-radius: 12px;">
+        <small style="color: var(--gray-600);">
+            <i class="fas fa-lightbulb"></i> 
+            <strong>Insight:</strong> Binary Search (O(log n)) scales efficiently for large datasets, 
+            while Linear Scan (O(n)) becomes slower as data grows.
+        </small>
+    </div>
+</div>
+
+<script>
+// Chart data from backend
+const months      = {{ chart_months|safe }};
+const lostData    = {{ chart_lost|safe }};
+const foundData   = {{ chart_found|safe }};
+const growthM     = {{ growth_months|safe }};
+const growthC     = {{ growth_counts|safe }};
+
+// Items per month chart (Bar Chart)
+new Chart(document.getElementById('itemsChart'), {
+    type: 'bar',
+    data: {
+        labels: months,
+        datasets: [
+            { 
+                label: 'Lost Items', 
+                data: lostData, 
+                backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                borderColor: '#f59e0b',
+                borderWidth: 1,
+                borderRadius: 8,
+                barPercentage: 0.7
+            },
+            { 
+                label: 'Found Items', 
+                data: foundData, 
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderColor: '#10b981',
+                borderWidth: 1,
+                borderRadius: 8,
+                barPercentage: 0.7
+            }
+        ]
+    },
+    options: { 
+        responsive: true, 
+        maintainAspectRatio: true,
+        plugins: { 
+            legend: { 
+                position: 'bottom',
+                labels: { usePointStyle: true, boxWidth: 10 }
+            },
+            tooltip: { mode: 'index', intersect: false }
+        },
+        scales: { 
+            y: { 
+                beginAtZero: true, 
+                ticks: { stepSize: 1, precision: 0 },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// User growth chart (Line Chart)
+new Chart(document.getElementById('usersChart'), {
+    type: 'line',
+    data: {
+        labels: growthM,
+        datasets: [{
+            label: 'New User Registrations',
+            data: growthC,
+            borderColor: '#1a56db',
+            backgroundColor: 'rgba(26, 86, 219, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#1a56db',
+            pointBorderColor: 'white',
+            pointBorderWidth: 2
+        }]
+    },
+    options: { 
+        responsive: true, 
+        maintainAspectRatio: true,
+        plugins: { 
+            legend: { position: 'bottom' },
+            tooltip: { mode: 'index', intersect: false }
+        },
+        scales: { 
+            y: { 
+                beginAtZero: true, 
+                ticks: { stepSize: 1, precision: 0 },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+// Performance simulation chart
+const ns = [10, 50, 100, 500, 1000, 5000, 10000];
+const binarySteps = ns.map(n => Math.ceil(Math.log2(n + 1)));
+const quickSteps  = ns.map(n => Math.ceil(n * Math.log2(n + 1)));
+const linearSteps = ns.map(n => n);
+
+new Chart(document.getElementById('loadChart'), {
+    type: 'line',
+    data: {
+        labels: ns.map(n => `n=${n.toLocaleString()}`),
+        datasets: [
+            { 
+                label: 'Binary Search O(log n)', 
+                data: binarySteps, 
+                borderColor: '#10b981', 
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                tension: 0.4, 
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true
+            },
+            { 
+                label: 'Linear Scan O(n)', 
+                data: linearSteps, 
+                borderColor: '#f59e0b', 
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                borderWidth: 3,
+                tension: 0.4, 
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true
+            },
+            { 
+                label: 'Quick Sort O(n log n)', 
+                data: quickSteps.map(v => Math.min(v, 200000)), 
+                borderColor: '#1a56db', 
+                backgroundColor: 'rgba(26, 86, 219, 0.1)',
+                borderWidth: 3,
+                tension: 0.4, 
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true
+            },
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { 
+            legend: { position: 'bottom' },
+            tooltip: { 
+                mode: 'index', 
+                intersect: false,
+                callbacks: {
+                    label: function(context) {
+                        return `${context.dataset.label}: ${context.raw.toLocaleString()} operations`;
+                    }
+                }
+            }
+        },
+        scales: { 
+            y: { 
+                beginAtZero: true, 
+                title: { display: true, text: 'Operations (estimated)', font: { size: 12 } },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: { 
+                title: { display: true, text: 'Dataset Size (n)', font: { size: 12 } },
+                grid: { display: false }
+            }
+        }
+    }
+});
+
+// Add animation to stats cards
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, index) => {
+        if (entry.isIntersecting) {
+            setTimeout(() => {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }, index * 50);
+            observer.unobserve(entry.target);
+        }
+    });
+}, observerOptions);
+
+document.querySelectorAll('.stat-card-sm, .chart-card, .complexity-card, .space-card').forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    card.style.transition = 'all 0.5s ease';
+    observer.observe(card);
+});
+</script>
+{% endblock %}
