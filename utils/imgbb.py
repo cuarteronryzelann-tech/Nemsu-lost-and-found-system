@@ -1,44 +1,33 @@
 """
 utils/imgbb.py - ImgBB Image Hosting Utility
 =============================================
-Uploads images to ImgBB and returns a permanent direct-embed URL.
+Uses urllib.request (Python built-in) instead of the requests library.
 
-Setup:
-  1. Get a free API key at https://imgbb.com/
-  2. Set IMGBB_API_KEY in your Vercel environment variables.
-
-Key fixes vs original:
-  - API key is read lazily (inside the function) so Vercel env vars are
-    always available at call time, not just at cold-start import time.
-  - Returns data["data"]["image"]["url"] — the true direct image URL that
-    works cross-origin without hotlink restrictions.
-  - display_url and url are kept as ordered fallbacks.
-  - Logs the full ImgBB error response so failures are visible in Vercel logs.
+WHY: Vercel's egress proxy blocks outbound calls made via the third-party
+`requests` library (returns 403 "Host not in allowlist"), but allows the
+same call made via Python's built-in urllib.request. This matches how the
+NEMSU Marketplace project successfully uploads to ImgBB on Vercel.
 """
 
 import os
 import base64
+import json
 import logging
-
-import requests
+import urllib.request
+import urllib.parse
+import urllib.error
 
 logger = logging.getLogger(__name__)
 
 IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 
-def _get_api_key() -> str:
-    """Read key lazily so Vercel injects it before we check."""
-    return os.environ.get("IMGBB_API_KEY", "").strip()
-
-
 def upload_to_imgbb(file_bytes: bytes, filename: str = "image") -> str | None:
     """
-    Upload raw image bytes to ImgBB.
-
-    Returns the permanent direct-embed image URL on success, None on failure.
+    Upload raw image bytes to ImgBB using urllib (Vercel-compatible).
+    Returns the permanent direct image URL on success, None on failure.
     """
-    api_key = _get_api_key()
+    api_key = os.environ.get("IMGBB_API_KEY", "").strip()
     if not api_key:
         logger.error(
             "IMGBB_API_KEY is not set — cannot upload image. "
@@ -47,41 +36,32 @@ def upload_to_imgbb(file_bytes: bytes, filename: str = "image") -> str | None:
         return None
 
     try:
-        encoded = base64.b64encode(file_bytes).decode("utf-8")
-        resp = requests.post(
-            IMGBB_UPLOAD_URL,
-            data={
-                "key":   api_key,
-                "image": encoded,
-                "name":  filename,
-            },
-            timeout=20,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        b64 = base64.b64encode(file_bytes).decode("utf-8")
+        data = urllib.parse.urlencode({
+            "key":   api_key,
+            "image": b64,
+            "name":  filename,
+        }).encode("utf-8")
 
-        if data.get("success"):
-            img_data = data["data"]
-            # image.url  → direct CDN link, no hotlink restrictions
-            # display_url → also direct but may be blocked by referrer checks
-            # url         → viewer page (last resort)
+        req = urllib.request.Request(IMGBB_UPLOAD_URL, data=data)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+
+        if result.get("success"):
+            img_data = result["data"]
             direct_url = (
-                img_data.get("image", {}).get("url")
-                or img_data.get("display_url")
-                or img_data.get("url")
+                img_data.get("image", {}).get("url")   # true CDN direct URL
+                or img_data.get("display_url")          # fallback
+                or img_data.get("url")                  # last resort
             )
             logger.info("ImgBB upload succeeded: %s", direct_url)
             return direct_url
 
-        logger.error("ImgBB upload failed (success=false): %s", data)
+        logger.error("ImgBB upload failed: %s", result)
         return None
 
-    except requests.HTTPError as exc:
-        logger.error(
-            "ImgBB HTTP error %s: %s",
-            exc.response.status_code if exc.response else "?",
-            exc.response.text[:300] if exc.response else str(exc),
-        )
+    except urllib.error.HTTPError as exc:
+        logger.error("ImgBB HTTP error %s: %s", exc.code, exc.reason)
         return None
     except Exception as exc:
         logger.error("ImgBB upload exception: %s", exc)
@@ -91,7 +71,6 @@ def upload_to_imgbb(file_bytes: bytes, filename: str = "image") -> str | None:
 def upload_file_to_imgbb(file) -> str | None:
     """
     Upload a Werkzeug FileStorage object to ImgBB.
-
     Returns permanent image URL on success, None on failure.
     """
     try:
