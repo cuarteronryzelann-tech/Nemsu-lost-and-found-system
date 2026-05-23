@@ -192,7 +192,7 @@ def send(conv_id):
             with urllib.request.urlopen(_req, timeout=15) as _resp:
                 _result = _json.loads(_resp.read().decode("utf-8"))
             if _result.get("success"):
-                filename = _result["data"]["display_url"]
+                filename = (_result["data"].get("image", {}).get("url") or _result["data"].get("display_url") or _result["data"].get("url"))
             else:
                 logger.error("ImgBB rejected: %s", _result)
                 return jsonify({"ok": False, "error": "Image upload failed. Please try again."}), 500
@@ -300,7 +300,7 @@ def poll(conv_id):
             {
                 "id": m["id"],
                 "content": m["content"],
-                "image": m.get("image_filename", ""),
+                "image": (m["image_filename"] if m.get("image_filename") and m["image_filename"].startswith("http") else ""),
                 "sender_id": m["sender_id"],
                 "sender_name": m["sender_name"],
                 "sender_pic": m.get("sender_pic", ""),
