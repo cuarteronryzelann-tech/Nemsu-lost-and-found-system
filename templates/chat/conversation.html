@@ -839,8 +839,14 @@ function appendMessage(msg, type, isPending = false) {
 
   let attachHtml = '';
   if (msg.image) {
-    const src = msg.image.startsWith('http') ? msg.image : CHAT_BASE + msg.image;
-    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" onclick="openLightbox(this.src)" onerror="this.style.display='none'" /></div>`;
+    if (msg.image.startsWith('http')) {
+      const src = msg.image;
+      attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" referrerpolicy="no-referrer" onclick="openLightbox(this.src)" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>&#128247; Image unavailable</div>')" /></div>`;
+    } else {
+      // Local filename — file no longer exists on server (pre-ImgBB upload).
+      // Show placeholder without making a request that would 404.
+      attachHtml = `<div class="msg-attachment-img"><div style="padding:.5rem;color:#94a3b8;font-size:.8rem;">&#128247; Image unavailable</div></div>`;
+    }
   }
 
   const contentHtml = msg.content
