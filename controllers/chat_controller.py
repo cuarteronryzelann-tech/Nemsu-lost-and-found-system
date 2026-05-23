@@ -17,7 +17,8 @@ from functools import wraps
 from models.chat_model import (
     get_or_create_conversation, get_conversation_by_id,
     get_user_conversations, get_messages, get_messages_since, send_message,
-    mark_messages_read, get_total_unread, get_all_conversations_admin
+    mark_messages_read, get_total_unread, get_all_conversations_admin,
+    delete_message
 )
 from models.user_model import get_user_by_id, get_all_users
 from models.notification_model import add_notification
@@ -302,3 +303,24 @@ def contact_admin():
     user_id = session["user"]["id"]
     conv = get_or_create_conversation(user_id, admin["id"])
     return redirect(url_for("chat.conversation", conv_id=conv["id"]))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Delete a message (sender only)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.route("/<int:conv_id>/delete/<int:msg_id>", methods=["DELETE"])
+@login_required
+def delete_msg(conv_id, msg_id):
+    user_id = session["user"]["id"]
+    conv = get_conversation_by_id(conv_id)
+
+    if not conv:
+        return jsonify({"ok": False, "error": "Conversation not found"}), 404
+
+    if conv["user1_id"] != user_id and conv["user2_id"] != user_id:
+        return jsonify({"ok": False, "error": "Access denied"}), 403
+
+    success = delete_message(msg_id, user_id)
+    if success:
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "Message not found or not yours"}), 403

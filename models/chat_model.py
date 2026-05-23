@@ -218,3 +218,24 @@ def get_all_conversations_admin() -> list[dict]:
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def delete_message(msg_id: int, sender_id: int) -> bool:
+    """Soft-delete a message by replacing content with deleted indicator. Only sender can delete."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id FROM messages WHERE id = ? AND sender_id = ?",
+        (msg_id, sender_id)
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+    cursor.execute(
+        "UPDATE messages SET content = NULL, image_filename = NULL, is_deleted = 1 WHERE id = ?",
+        (msg_id,)
+    )
+    conn.commit()
+    conn.close()
+    return True

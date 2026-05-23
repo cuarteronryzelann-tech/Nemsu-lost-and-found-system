@@ -334,6 +334,7 @@ def _init_schema(cursor):
     """)
     _migrate(cursor, "messages", [
         ("image_filename", "TEXT"),
+        ("is_deleted",     "INTEGER DEFAULT 0"),
     ])
 
     cursor.execute("""
