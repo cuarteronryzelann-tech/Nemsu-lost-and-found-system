@@ -481,7 +481,9 @@ function filterFeed(type, btn) {
     document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.querySelectorAll('#feedGrid .item-card').forEach(card => {
-        const show = (type === 'all' || card.dataset.type === type);
+        const cardType = (card.dataset.type || '').toLowerCase();
+        const filterType = type.toLowerCase();
+        const show = (filterType === 'all' || cardType === filterType);
         card.style.display = show ? '' : 'none';
         // Reset visibility so cards are always visible when shown
         if (show) {
