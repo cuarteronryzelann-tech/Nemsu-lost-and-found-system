@@ -481,7 +481,13 @@ function filterFeed(type, btn) {
     document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.querySelectorAll('#feedGrid .item-card').forEach(card => {
-        card.style.display = (type === 'all' || card.dataset.type === type) ? '' : 'none';
+        const show = (type === 'all' || card.dataset.type === type);
+        card.style.display = show ? '' : 'none';
+        // Reset visibility so cards are always visible when shown
+        if (show) {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }
     });
     const visible = [...document.querySelectorAll('#feedGrid .item-card')].filter(c => c.style.display !== 'none');
     let empty = document.querySelector('#feedGrid .empty-filter');
@@ -495,12 +501,22 @@ function filterFeed(type, btn) {
     } else if (empty) { empty.remove(); }
 }
 
+// Animate cards on load only — don't use opacity:0 as default so filter always works
 const io = new IntersectionObserver(entries => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity='1'; e.target.style.transform='translateY(0)'; }});
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            e.target.style.opacity = '1';
+            e.target.style.transform = 'translateY(0)';
+            io.unobserve(e.target); // stop observing after first reveal
+        }
+    });
 }, { threshold: 0.05 });
+
 document.querySelectorAll('.item-card').forEach((el, i) => {
-    el.style.opacity='0'; el.style.transform='translateY(18px)';
-    el.style.transition=`all .4s ease ${i*0.04}s`;
+    // Only animate if not already visible (first load)
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(18px)';
+    el.style.transition = `opacity .4s ease ${i * 0.04}s, transform .4s ease ${i * 0.04}s`;
     io.observe(el);
 });
 </script>
