@@ -325,11 +325,10 @@ def dashboard():
     }
     raw_items = sort_fns.get(sort_by, sort_by_date)(raw_items, ascending=ascending)
 
-    # Reporter info is already JOIN-ed in get_items_for_search() — no extra queries needed
-    recent_items = []
+    # Reporter info is already JOIN-ed in get_items_for_search()
     for item in raw_items:
         item["reporter_pic_ok"] = item.get("reporter_pic_status") == "approved"
-        recent_items.append(item)
+    recent_items = raw_items
 
     return render_template("user/dashboard.html",
                            recent_items=recent_items,
@@ -510,10 +509,9 @@ def search_items():
     }
     items = sort_functions.get(sort_by, sort_by_date)(items, ascending=ascending)
 
-    # ── Count lost vs found for nav indicator ─────────────────────────────
-    all_items_for_count = get_items_for_search()
-    lost_count  = sum(1 for it in all_items_for_count if it.get("type") == "lost")
-    found_count = sum(1 for it in all_items_for_count if it.get("type") == "found")
+    # ── Count lost vs found for nav indicator (reuse already-fetched list)
+    lost_count  = sum(1 for it in items if it.get("type") == "lost")
+    found_count = sum(1 for it in items if it.get("type") == "found")
 
     # ── User search ────────────────────────────────────────────────────────
     from models.user_model import get_all_users

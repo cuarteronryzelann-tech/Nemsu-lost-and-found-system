@@ -1,12 +1,22 @@
 """
-app.py - Main Entry Point for NEMSU Lost and Found System
-==========================================================
+app.py - Main Entry Point for NEMSU Lost and Found System (Optimized)
+======================================================================
 Initializes the Flask application, registers all blueprints (routes),
 and starts the development server.
+
+Optimization changes vs original:
+  - Flask-Compress added: gzip-compresses HTML/JSON responses automatically,
+    reducing bandwidth and improving perceived speed (especially on slow
+    mobile networks like campus WiFi).
+  - Static file cache header raised from 1 year to 1 year (unchanged, already good).
+  - Added after_request hook to set Cache-Control: no-store on API JSON
+    endpoints so browsers never cache stale badge counts.
+  - Removed redundant import inside _serve_upload (mimetypes imported at top).
 """
 
 import os
-from flask import Flask
+import mimetypes
+from flask import Flask, request as flask_request
 from config import Config
 from models.database import init_db
 from controllers.auth_controller import auth_bp
@@ -16,35 +26,45 @@ from controllers.item_controller import item_bp
 from controllers.chat_controller import chat_bp
 from controllers.ai_chatbot_controller import ai_bp
 
-# Allow OAuth over plain HTTP only in local development.
-# On Render (PRODUCTION=true), this is NOT set — HTTPS is used instead.
 if not os.environ.get("PRODUCTION"):
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 def create_app():
-    """
-    Application factory function.
-    Creates and configures the Flask app instance,
-    registers blueprints, and initializes the database.
-    """
     app = Flask(__name__)
     app.config.from_object(Config)
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # cache static files 1 year
 
-    # Flask uses signed-cookie sessions by default (no filesystem needed)
-    # This is reliable on Render's ephemeral filesystem environment.
+    # ── Gzip compression ──────────────────────────────────────────────────
+    # Compresses HTML, JSON, CSS responses — typically 60-80% size reduction.
+    # Falls back gracefully if flask-compress is not installed.
+    try:
+        from flask_compress import Compress
+        app.config['COMPRESS_MIMETYPES'] = [
+            'text/html', 'text/css', 'application/json',
+            'application/javascript', 'text/javascript',
+        ]
+        app.config['COMPRESS_LEVEL'] = 6      # balanced speed/ratio
+        app.config['COMPRESS_MIN_SIZE'] = 500 # don't compress tiny responses
+        Compress(app)
+    except ImportError:
+        pass  # optional — app works fine without it
 
-    # Initialize the database (create tables if not exist)
     init_db()
 
-    # Health-check endpoint — Render pings this to confirm the app is alive.
+    # ── Cache-Control for JSON API endpoints ─────────────────────────────
+    @app.after_request
+    def set_cache_headers(response):
+        if flask_request.path.startswith(('/user/notifications', '/chat/unread',
+                                           '/user/heartbeat', '/chat/')):
+            if response.content_type and 'json' in response.content_type:
+                response.headers['Cache-Control'] = 'no-store'
+        return response
+
     @app.route("/healthz")
     def _healthz():
         return "ok", 200
 
-    # Favicon routes — browsers request these automatically; serve the logo
-    # so Vercel never logs a 404 for /favicon.ico or /favicon.png.
     @app.route("/favicon.ico")
     @app.route("/favicon.png")
     def _favicon():
@@ -55,24 +75,16 @@ def create_app():
             mimetype="image/png",
         )
 
-    # On Vercel the filesystem is read-only except /tmp, so uploaded files are
-    # saved to /tmp/uploads/<subfolder>/<filename> (see save_upload() in
-    # user_controller.py).  Flask's built-in static file handler only serves
-    # files under the static/ folder, so user-uploaded images result in 404s
-    # unless we add a dedicated route that reads from /tmp.
     @app.route("/static/uploads/<subfolder>/<filename>")
     def _serve_upload(subfolder, filename):
         from flask import send_from_directory, abort
-        import mimetypes
-        # Security: reject path traversal attempts
         if ".." in subfolder or ".." in filename or "/" in filename:
             abort(400)
-        tmp_path = os.path.join("/tmp", "uploads", subfolder)
-        full_path = os.path.join(tmp_path, filename)
+        tmp_path    = os.path.join("/tmp", "uploads", subfolder)
+        full_path   = os.path.join(tmp_path, filename)
         if os.path.isfile(full_path):
             mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
             return send_from_directory(tmp_path, filename, mimetype=mime)
-        # Fall back to the real static folder (for seed/fixture images)
         static_path = os.path.join(app.root_path, "static", "uploads", subfolder)
         static_full = os.path.join(static_path, filename)
         if os.path.isfile(static_full):
@@ -80,18 +92,16 @@ def create_app():
             return send_from_directory(static_path, filename, mimetype=mime)
         abort(404)
 
-    # Register blueprints
-    app.register_blueprint(auth_bp)    # login / logout / OAuth
-    app.register_blueprint(admin_bp)   # admin routes
-    app.register_blueprint(user_bp)    # student routes
-    app.register_blueprint(item_bp)    # shared item routes
-    app.register_blueprint(chat_bp)    # chat / messaging
-    app.register_blueprint(ai_bp)      # AI chatbot (Gemini)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(user_bp)
+    app.register_blueprint(item_bp)
+    app.register_blueprint(chat_bp)
+    app.register_blueprint(ai_bp)
 
     return app
 
 
-# Create app at module level so gunicorn can find it
 app = create_app()
 
 if __name__ == "__main__":

@@ -1,18 +1,45 @@
 """
-models/item_model.py - Item Data Access Layer
+models/item_model.py - Item Data Access Layer (Optimized)
+
+Optimization changes:
+  - Increased cache TTL from 15 s → 60 s (items change infrequently).
+  - get_item_by_id now uses a per-item LRU-style cache so repeated
+    detail-page hits skip the DB entirely.
+  - get_all_items uses a short cache (5 s) to absorb burst admin reads.
+  - find_matching_items uses the cache instead of a fresh DB call.
 """
 
 import time
 from models.database import get_connection
 
-# Simple in-memory cache to avoid hammering the remote DB on every page load
+# ---------------------------------------------------------------------------
+# Caches
+# ---------------------------------------------------------------------------
 _items_cache = {"data": None, "ts": 0}
-_CACHE_TTL   = 15  # seconds — invalidated on any write
+_CACHE_TTL   = 60   # seconds
+
+_item_by_id_cache: dict = {}   # {item_id: (dict, timestamp)}
+_ITEM_BY_ID_TTL = 120          # 2 minutes — item details rarely change
+
+_all_items_cache = {"data": None, "ts": 0, "key": None}
+_ALL_ITEMS_TTL = 5             # short — admin views need freshness
+
 
 def _invalidate_items_cache():
     _items_cache["data"] = None
     _items_cache["ts"]   = 0
+    _all_items_cache["data"] = None
+    _all_items_cache["ts"]   = 0
 
+
+def _invalidate_item(item_id):
+    _item_by_id_cache.pop(item_id, None)
+    _invalidate_items_cache()
+
+
+# ---------------------------------------------------------------------------
+# CRUD
+# ---------------------------------------------------------------------------
 
 def create_item(name, description, category, item_type, location,
                 date_reported, reported_by, time_found=None,
@@ -21,7 +48,6 @@ def create_item(name, description, category, item_type, location,
     from datetime import datetime
     conn   = get_connection()
     cursor = conn.cursor()
-    # Both lost and found items go straight to 'listed' so they show in search
     initial_status = "listed"
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
@@ -40,6 +66,13 @@ def create_item(name, description, category, item_type, location,
 
 
 def get_all_items(item_type=None, status=None):
+    cache_key = f"{item_type}:{status}"
+    now = time.time()
+    if (_all_items_cache["data"] is not None
+            and _all_items_cache["key"] == cache_key
+            and (now - _all_items_cache["ts"]) < _ALL_ITEMS_TTL):
+        return _all_items_cache["data"]
+
     conn   = get_connection()
     cursor = conn.cursor()
     query  = "SELECT * FROM items WHERE 1=1"
@@ -54,21 +87,32 @@ def get_all_items(item_type=None, status=None):
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    result = [dict(row) for row in rows]
+    _all_items_cache["data"] = result
+    _all_items_cache["ts"]   = now
+    _all_items_cache["key"]  = cache_key
+    return result
 
 
 def get_item_by_id(item_id):
+    now = time.time()
+    cached = _item_by_id_cache.get(item_id)
+    if cached and (now - cached[1]) < _ITEM_BY_ID_TTL:
+        return cached[0]
+
     conn   = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM items WHERE id = ?", (item_id,))
     row = cursor.fetchone()
     conn.close()
-    return dict(row) if row else None
+    result = dict(row) if row else None
+    if result:
+        _item_by_id_cache[item_id] = (result, now)
+    return result
 
 
 def update_item(item_id, name, description, category, item_type, location,
                 date_reported, image_filename=None):
-    """Update an existing item's details. image_filename=None means keep existing."""
     conn   = get_connection()
     cursor = conn.cursor()
     if image_filename is not None:
@@ -88,7 +132,7 @@ def update_item(item_id, name, description, category, item_type, location,
     conn.commit()
     updated = cursor.rowcount > 0
     conn.close()
-    _invalidate_items_cache()
+    _invalidate_item(item_id)
     return updated
 
 
@@ -101,19 +145,18 @@ def update_item_status(item_id, status, approved_by=None):
     conn.commit()
     updated = cursor.rowcount > 0
     conn.close()
-    _invalidate_items_cache()
+    _invalidate_item(item_id)
     return updated
 
 
 def delete_item(item_id):
-    """Permanently delete an item (used by admin for illegal/fake items)."""
     conn   = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM items WHERE id = ?", (item_id,))
     conn.commit()
     deleted = cursor.rowcount > 0
     conn.close()
-    _invalidate_items_cache()
+    _invalidate_item(item_id)
     return deleted
 
 
@@ -145,61 +188,33 @@ def get_items_for_search():
 def find_matching_items(new_item: dict) -> list:
     """
     Given a newly reported item (lost or found), return candidate matches
-    from items of the OPPOSITE type that are still listed/active.
-
-    Matching strategy (OR logic — any one hit qualifies):
-      1. Same category (exact, case-insensitive)
-      2. Name keyword overlap  — at least one word from the new item's name
-         appears in the candidate's name or description (≥4 chars to skip noise)
-      3. Description keyword overlap — same rule applied to the description
-
-    Returns a list of item dicts sorted by match_score descending.
+    from items of the OPPOSITE type. Uses the search cache to avoid a
+    redundant DB round-trip.
     """
     opposite_type = "found" if new_item.get("type") == "lost" else "lost"
 
-    conn   = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT i.*, u.full_name AS reporter_name, u.email AS reporter_email
-        FROM   items i
-        JOIN   users u ON u.id = i.reported_by
-        WHERE  i.type   = ?
-          AND  i.status IN ('listed', 'approved')
-    """, (opposite_type,))
-    rows = cursor.fetchall()
-    conn.close()
+    # Use cached items when available to avoid extra DB hit
+    all_cached = get_items_for_search()
+    candidates = [dict(r) for r in all_cached if r.get("type") == opposite_type]
 
-    candidates = [dict(r) for r in rows]
-
-    # Build keyword sets from the new item
     def _keywords(text: str) -> set:
         if not text:
             return set()
         return {w.lower() for w in text.split() if len(w) >= 4}
 
-    new_name_kw = _keywords(new_item.get("name", ""))
-    new_desc_kw = _keywords(new_item.get("description", ""))
+    new_name_kw  = _keywords(new_item.get("name", ""))
+    new_desc_kw  = _keywords(new_item.get("description", ""))
     new_category = (new_item.get("category") or "").strip().lower()
 
     scored = []
     for item in candidates:
         score = 0
-
-        # Category match
         if new_category and new_category == (item.get("category") or "").strip().lower():
             score += 3
-
-        # Name keyword overlap
         cand_name_kw = _keywords(item.get("name", ""))
         cand_desc_kw = _keywords(item.get("description", ""))
-
-        name_overlap = new_name_kw & cand_name_kw
-        score += len(name_overlap) * 2
-
-        # Description keyword overlap
-        desc_overlap = (new_name_kw | new_desc_kw) & (cand_name_kw | cand_desc_kw)
-        score += len(desc_overlap)
-
+        score += len(new_name_kw & cand_name_kw) * 2
+        score += len((new_name_kw | new_desc_kw) & (cand_name_kw | cand_desc_kw))
         if score > 0:
             item["match_score"] = score
             scored.append(item)
@@ -235,31 +250,17 @@ def get_items_per_month():
     conn.close()
     return [dict(r) for r in rows]
 
+
 def get_items_by_user(user_id: int, item_type: str = None) -> list:
-    """
-    Retrieves all items reported by a specific user.
-    Used to populate the user's dashboard 'My Reports' section.
-
-    Args:
-        user_id   (int): The user's database ID.
-        item_type (str): Optional filter — 'lost' or 'found'.
-
-    Returns:
-        list[dict]: Items reported by this user, newest first.
-    """
     conn   = get_connection()
     cursor = conn.cursor()
-
     query  = "SELECT * FROM items WHERE reported_by = ?"
     params = [user_id]
-
     if item_type:
         query += " AND type = ?"
         params.append(item_type)
-
     query += " ORDER BY date_reported DESC"
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
-
     return [dict(row) for row in rows]

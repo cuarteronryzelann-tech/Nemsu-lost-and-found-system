@@ -23,4 +23,4 @@ gunicorn==21.2.0              # Production WSGI server (used on Render)
 # Set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN env vars to activate.
 # Without them the app uses local SQLite automatically.
 # Get credentials at https://turso.tech (free tier: 500 MB, 1 B reads/month).
-libsql-experimental
+libsql-experimentalflask-compress==1.14       # gzip/brotli response compression (60-80% smaller HTML/JSON)

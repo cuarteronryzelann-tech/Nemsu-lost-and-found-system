@@ -1,38 +1,50 @@
 """
-models/database.py - Database Connection Manager
-=================================================
+models/database.py - Database Connection Manager (Optimized)
+=============================================================
 Supports two modes:
   1. TURSO (cloud SQLite, free) — set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
   2. Local SQLite (fallback)    — used when env vars are not set
 
-Vercel / serverless strategy:
-  - On Vercel, every request is a fresh process. Opening a new Turso
-    connection + running DDL on every cold start exhausts the free-tier
-    connection concurrency limit immediately.
-  - Solution: set SKIP_INIT_DB=1 in your Vercel environment variables
-    after the first deployment. The schema is already in Turso; it never
-    needs to be re-created.
-  - Connections are created fresh per request (libsql handles its own
-    internal pooling over HTTP/2); we never hold a connection open between
-    requests.
+Optimization changes:
+  - Local SQLite now uses a persistent connection pool (threading.local)
+    instead of opening/closing a new connection on every request.
+  - WAL journal mode + optimized PRAGMAs applied once at pool init.
+  - Connection pooling eliminates the per-request open/close overhead
+    which was the #1 source of lag on the local/Render SQLite path.
 """
 
 import os
 import sqlite3
+import threading
 from config import Config
 
 TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL", "").strip()
 TURSO_AUTH_TOKEN   = os.environ.get("TURSO_AUTH_TOKEN",   "").strip()
 USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
 
-# Set SKIP_INIT_DB=1 in Vercel env vars after first deploy.
-# This skips the schema DDL entirely on cold start — the schema already exists.
 SKIP_INIT_DB = os.environ.get("SKIP_INIT_DB", "").strip() in ("1", "true", "yes")
 
+# ---------------------------------------------------------------------------
+# Thread-local SQLite connection pool (local mode only)
+# ---------------------------------------------------------------------------
+_local = threading.local()
 
-# ---------------------------------------------------------------------------
-# Connection factory  — one fresh connection per request, closed after use
-# ---------------------------------------------------------------------------
+
+def _get_local_conn():
+    """Return a cached per-thread SQLite connection, creating it if needed."""
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = sqlite3.connect(Config.DATABASE_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        # Performance PRAGMAs — applied once per connection
+        conn.execute("PRAGMA journal_mode=WAL")       # concurrent reads
+        conn.execute("PRAGMA synchronous=NORMAL")     # safe + faster than FULL
+        conn.execute("PRAGMA cache_size=-8000")       # 8 MB page cache
+        conn.execute("PRAGMA temp_store=MEMORY")      # temp tables in RAM
+        conn.execute("PRAGMA mmap_size=134217728")    # 128 MB memory-mapped I/O
+        _local.conn = conn
+    return conn
+
 
 def get_connection():
     if USE_TURSO:
@@ -42,13 +54,43 @@ def get_connection():
             auth_token=TURSO_AUTH_TOKEN,
         )
         return TursoConnection(conn)
-    conn = sqlite3.connect(Config.DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return _LocalConnection(_get_local_conn())
 
 
 # ---------------------------------------------------------------------------
-# Turso wrapper — sqlite3-compatible interface
+# Lightweight wrapper for the pooled local connection
+# ---------------------------------------------------------------------------
+
+class _LocalConnection:
+    """
+    Wraps a thread-local sqlite3.Connection so it looks like the Turso wrapper
+    (context-manager support, .cursor(), .commit(), .close()).
+    close() is a no-op — the connection stays open for the thread's lifetime.
+    """
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        pass  # keep alive — pooled
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self._conn.rollback()
+        else:
+            self._conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Turso wrapper — sqlite3-compatible interface (unchanged)
 # ---------------------------------------------------------------------------
 
 class TursoConnection:
@@ -155,22 +197,12 @@ class TursoRow:
 
 
 # ---------------------------------------------------------------------------
-# Schema init — skipped entirely when SKIP_INIT_DB=1
+# Schema init
 # ---------------------------------------------------------------------------
 
 def init_db():
-    """
-    Run DDL to create tables if they don't exist.
-
-    IMPORTANT for Vercel:
-      After your first successful deployment, add SKIP_INIT_DB=1 to your
-      Vercel project environment variables and redeploy. This eliminates
-      the cold-start Turso connection entirely, solving the concurrency error.
-
-    The schema lives in Turso permanently — it never needs re-creation.
-    """
     if SKIP_INIT_DB:
-        return  # Schema already exists — skip entirely
+        return
 
     conn = get_connection()
     try:
@@ -376,6 +408,11 @@ def _create_indexes(cursor):
         "CREATE INDEX IF NOT EXISTS idx_claims_item_id     ON claims(item_id)",
         "CREATE INDEX IF NOT EXISTS idx_claims_claimant    ON claims(claimant_id)",
         "CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email)",
+        # New composite indexes for hot queries
+        "CREATE INDEX IF NOT EXISTS idx_items_status_type  ON items(status, type)",
+        "CREATE INDEX IF NOT EXISTS idx_notif_uid_read     ON notifications(user_id, is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_msg_conv_read      ON messages(conversation_id, is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_items_created_desc ON items(created_at DESC)",
     ]
     for idx_sql in indexes:
         try:

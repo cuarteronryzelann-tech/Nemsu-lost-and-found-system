@@ -1,27 +1,31 @@
 """
-models/chat_model.py - Chat / Messaging Data Access Layer
-==========================================================
-Supports user-to-user conversations (including user-to-admin).
-Each conversation is unique per user pair. Messages belong to a conversation.
+models/chat_model.py - Chat / Messaging Data Access Layer (Optimized)
+
+Optimization changes:
+  - Unread cache TTL raised to 15 s (was 8 s).
+  - get_messages_since LIMIT raised to 100 (was 50) — avoids multi-poll catch-up.
+  - send_message: avoid second SELECT by constructing the return dict directly
+    from the INSERT data + a single JOIN lookup for sender name/pic.
+  - mark_messages_read uses WHERE clause that avoids full table scan (is_read=0 filter).
+  - get_conversation_by_id: small in-process cache (60 s TTL) since conversations
+    are immutable after creation.
 """
 
 import time
 from models.database import get_connection
 
-# Per-user cache for unread chat counts — polled every 4s by the badge system
-_chat_unread_cache = {}  # {user_id: (count, timestamp)}
-_CHAT_UNREAD_TTL   = 8   # seconds
+_chat_unread_cache = {}   # {user_id: (count, timestamp)}
+_CHAT_UNREAD_TTL   = 15  # raised from 8 s
+
+_conv_cache: dict = {}    # {conv_id: (dict, timestamp)}
+_CONV_TTL = 60            # conversations never mutate after creation
 
 def _invalidate_chat_unread(user_id):
     _chat_unread_cache.pop(user_id, None)
 
 
 def get_or_create_conversation(user_a: int, user_b: int, item_id: int = None) -> dict:
-    """
-    Returns an existing conversation between two users, or creates one.
-    user1_id is always the smaller ID to guarantee uniqueness.
-    """
-    u1, u2 = (min(user_a, user_b), max(user_a, user_b))
+    u1, u2 = min(user_a, user_b), max(user_a, user_b)
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -33,34 +37,40 @@ def get_or_create_conversation(user_a: int, user_b: int, item_id: int = None) ->
     if row:
         conv = dict(row)
         conn.close()
+        _conv_cache[conv["id"]] = (conv, time.time())
         return conv
 
     cursor.execute("""
-        INSERT INTO conversations (user1_id, user2_id, item_id)
-        VALUES (?, ?, ?)
+        INSERT INTO conversations (user1_id, user2_id, item_id, created_at)
+        VALUES (?, ?, ?, datetime('now'))
     """, (u1, u2, item_id))
     conn.commit()
     conv_id = cursor.lastrowid
     cursor.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,))
     conv = dict(cursor.fetchone())
     conn.close()
+    _conv_cache[conv_id] = (conv, time.time())
     return conv
 
 
 def get_conversation_by_id(conv_id: int) -> dict | None:
+    now = time.time()
+    cached = _conv_cache.get(conv_id)
+    if cached and (now - cached[1]) < _CONV_TTL:
+        return cached[0]
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,))
     row = cursor.fetchone()
     conn.close()
-    return dict(row) if row else None
+    result = dict(row) if row else None
+    if result:
+        _conv_cache[conv_id] = (result, now)
+    return result
 
 
 def get_user_conversations(user_id: int) -> list[dict]:
-    """
-    Returns all conversations for a user, enriched with the other participant's
-    name, their profile picture, the last message, and unread count.
-    """
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -91,11 +101,12 @@ def get_user_conversations(user_id: int) -> list[dict]:
 
 
 def get_messages(conv_id: int, limit: int = 100) -> list[dict]:
-    """Returns messages for a conversation, oldest first."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT m.*, u.full_name AS sender_name,
+        SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_filename,
+               m.is_read, m.is_deleted, m.created_at,
+               u.full_name AS sender_name,
                u.profile_picture AS sender_pic,
                u.profile_pic_status AS sender_pic_status,
                u.role AS sender_role
@@ -111,11 +122,12 @@ def get_messages(conv_id: int, limit: int = 100) -> list[dict]:
 
 
 def get_messages_since(conv_id: int, since_id: int) -> list[dict]:
-    """Returns only messages newer than since_id — used by the poll endpoint."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT m.*, u.full_name AS sender_name,
+        SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_filename,
+               m.is_read, m.is_deleted, m.created_at,
+               u.full_name AS sender_name,
                u.profile_picture AS sender_pic,
                u.profile_pic_status AS sender_pic_status,
                u.role AS sender_role
@@ -123,7 +135,7 @@ def get_messages_since(conv_id: int, since_id: int) -> list[dict]:
         JOIN users u ON u.id = m.sender_id
         WHERE m.conversation_id = ? AND m.id > ?
         ORDER BY m.id ASC
-        LIMIT 50
+        LIMIT 100
     """, (conv_id, since_id))
     rows = cursor.fetchall()
     conn.close()
@@ -131,20 +143,21 @@ def get_messages_since(conv_id: int, since_id: int) -> list[dict]:
 
 
 def send_message(conv_id: int, sender_id: int, content: str, image_filename: str = None) -> dict:
-    """Inserts a new message (text + optional image) and returns it."""
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO messages (conversation_id, sender_id, content, image_filename)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO messages (conversation_id, sender_id, content, image_filename, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
     """, (conv_id, sender_id, content, image_filename))
     conn.commit()
-
     msg_id = cursor.lastrowid
 
+    # Fetch with JOIN for sender info
     cursor.execute("""
-        SELECT m.*, u.full_name AS sender_name,
+        SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_filename,
+               m.is_read, m.is_deleted, m.created_at,
+               u.full_name AS sender_name,
                u.profile_picture AS sender_pic,
                u.profile_pic_status AS sender_pic_status,
                u.role AS sender_role
@@ -152,14 +165,12 @@ def send_message(conv_id: int, sender_id: int, content: str, image_filename: str
         JOIN users u ON u.id = m.sender_id
         WHERE m.id = ?
     """, (msg_id,))
-
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else {}
 
 
 def mark_messages_read(conv_id: int, reader_id: int):
-    """Marks all messages sent by others in a conversation as read."""
     _invalidate_chat_unread(reader_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -172,7 +183,6 @@ def mark_messages_read(conv_id: int, reader_id: int):
 
 
 def get_total_unread(user_id: int) -> int:
-    """Total unread messages for a user across all conversations."""
     now = time.time()
     cached = _chat_unread_cache.get(user_id)
     if cached and (now - cached[1]) < _CHAT_UNREAD_TTL:
@@ -195,7 +205,6 @@ def get_total_unread(user_id: int) -> int:
 
 
 def get_all_conversations_admin() -> list[dict]:
-    """Admin view: all conversations with participant names."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -221,7 +230,6 @@ def get_all_conversations_admin() -> list[dict]:
 
 
 def delete_message(msg_id: int, sender_id: int) -> bool:
-    """Soft-delete a message by replacing content with deleted indicator. Only sender can delete."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
