@@ -64,11 +64,23 @@ def create_app():
 
     # ── Jinja2 globals ───────────────────────────────────────────────────
     def image_src(value, subfolder="items"):
-        """Resolve stored image value (ImgBB URL, data URI, or filename) to src URL."""
+        """Resolve stored image value (ImgBB URL, data URI, or filename) to src URL.
+
+        Chat images uploaded before ImgBB integration were stored as bare
+        filenames (e.g. 'c0ece0a850824e928e8a6637c71099aa.jpg'). On Vercel
+        those files no longer exist, so we return '' for chat bare-filename
+        values — the template renders '📷 Image unavailable' with no HTTP
+        request, which eliminates the 404 log spam entirely.
+        """
         if not value:
             return ""
         if value.startswith("http") or value.startswith("data:"):
             return value
+        # Legacy bare filename — file is gone on Vercel's ephemeral filesystem.
+        # Return '' so the template shows the unavailable placeholder without
+        # making an HTTP request that would 404.
+        if subfolder == "chat":
+            return ""
         return f"/uploads/{subfolder}/{value}"
     app.jinja_env.globals["image_src"] = image_src
 
@@ -108,6 +120,41 @@ def create_app():
             os.path.join(app.root_path, "static", "img"),
             "logo.png",
             mimetype="image/png",
+        )
+
+    # ── Legacy /static/uploads/chat/<filename> intercept ─────────────────
+    # Old messages stored bare filenames; browser requests hit Flask's static
+    # handler at /static/uploads/chat/<filename>, which returns a real 404.
+    # This route catches those requests first and returns a transparent GIF
+    # (same as _serve_upload does for /uploads/…) so the log stays clean and
+    # the onerror handlers in the template hide the broken <img> gracefully.
+    _transparent_gif = (
+        b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00"
+        b"\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00\x00"
+        b"\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b"
+    )
+
+    @app.route("/static/uploads/chat/<filename>")
+    def _serve_legacy_chat_image(filename):
+        """Intercept legacy local-filename chat images before Flask's static handler 404s."""
+        from flask import Response, send_from_directory
+        if ".." in filename or "/" in filename:
+            return Response("Bad Request", status=400)
+        mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        # Try to find the file in any known location (handles local dev)
+        for folder in [
+            os.path.join(app.root_path, "static", "uploads", "chat"),
+            "/tmp/uploads/chat",
+            "/tmp/chat_uploads",
+        ]:
+            if os.path.isfile(os.path.join(folder, filename)):
+                return send_from_directory(folder, filename, mimetype=mime)
+        # File gone (Vercel ephemeral FS) — return silent placeholder
+        return Response(
+            _transparent_gif,
+            status=200,
+            mimetype="image/gif",
+            headers={"Cache-Control": "public, max-age=86400"},
         )
 
     @app.route("/uploads/<subfolder>/<filename>")
