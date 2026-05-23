@@ -80,16 +80,24 @@ def create_app():
         from flask import send_from_directory, abort
         if ".." in subfolder or ".." in filename or "/" in filename:
             abort(400)
-        tmp_path    = os.path.join("/tmp", "uploads", subfolder)
-        full_path   = os.path.join(tmp_path, filename)
-        if os.path.isfile(full_path):
-            mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+        # Check 1: standard /tmp/uploads/<subfolder>/ path (items, profiles)
+        tmp_path = os.path.join("/tmp", "uploads", subfolder)
+        if os.path.isfile(os.path.join(tmp_path, filename)):
             return send_from_directory(tmp_path, filename, mimetype=mime)
+
+        # Check 2: chat images are saved to /tmp/chat_uploads/ by chat_controller
+        if subfolder == "chat":
+            chat_tmp = "/tmp/chat_uploads"
+            if os.path.isfile(os.path.join(chat_tmp, filename)):
+                return send_from_directory(chat_tmp, filename, mimetype=mime)
+
+        # Check 3: real static folder (seed/fixture images shipped with repo)
         static_path = os.path.join(app.root_path, "static", "uploads", subfolder)
-        static_full = os.path.join(static_path, filename)
-        if os.path.isfile(static_full):
-            mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        if os.path.isfile(os.path.join(static_path, filename)):
             return send_from_directory(static_path, filename, mimetype=mime)
+
         abort(404)
 
     app.register_blueprint(auth_bp)

@@ -12,63 +12,9 @@
   <!-- Lucide icons (SVG icon system) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js" defer></script>
   <style>
-    /* ── Real-time toast system ── */
-    #rt-toasts {
-      position: fixed; top: 1rem; right: 1rem; z-index: 9000;
-      display: flex; flex-direction: column; gap: .5rem;
-      pointer-events: none; width: 320px;
-    }
-    .rt-toast {
-      background: #fff; border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
-      padding: .85rem 1rem; display: flex; align-items: flex-start; gap: .75rem;
-      pointer-events: all; border-left: 4px solid var(--color-primary);
-      animation: toastIn .25s cubic-bezier(.34,1.56,.64,1);
-      position: relative; overflow: hidden;
-    }
-    .rt-toast.success { border-left-color: #22c55e; }
-    .rt-toast.warning { border-left-color: #f59e0b; }
-    .rt-toast.error   { border-left-color: #ef4444; }
-    .rt-toast.info    { border-left-color: #3b82f6; }
-    .rt-toast-icon { flex-shrink:0; width:20px; height:20px; margin-top:1px; }
-    .rt-toast-body { flex:1; min-width:0; }
-    .rt-toast-title { font-weight: 700; font-size: .86rem; color: #0f172a; margin-bottom:.15rem; }
-    .rt-toast-msg   { font-size: .8rem; color: #64748b; line-height:1.45; word-break:break-word; }
-    .rt-toast-close {
-      background: none; border: none; cursor: pointer;
-      color: #94a3b8; font-size: 1rem; padding: 0; line-height:1;
-      flex-shrink: 0; transition: color .15s;
-    }
-    .rt-toast-close:hover { color: #64748b; }
-    .rt-toast-progress {
-      position: absolute; bottom:0; left:0; height:3px;
-      background: currentColor; opacity: .3;
-      animation: toastProgress 4s linear forwards;
-    }
-    @keyframes toastIn {
-      from { opacity:0; transform: translateX(24px) scale(.96); }
-      to   { opacity:1; transform: translateX(0) scale(1); }
-    }
-    @keyframes toastOut {
-      to { opacity:0; transform: translateX(24px) scale(.94); max-height:0; padding:0; margin:0; }
-    }
-    @keyframes toastProgress { from { width:100%; } to { width:0%; } }
+    /* Toast notifications removed */
 
-    /* ── Connection status pill ── */
-    #rt-status {
-      position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
-      z-index: 8000; display: none;
-      background: #1e293b; color: #fff; border-radius: 999px;
-      padding: .4rem 1rem; font-size: .78rem; font-weight: 600;
-      align-items: center; gap: .45rem;
-      box-shadow: 0 4px 16px rgba(0,0,0,.2);
-      animation: fadeUp .2s ease;
-    }
-    #rt-status.visible { display: flex; }
-    #rt-status-dot { width:8px; height:8px; border-radius:50%; background:#ef4444; }
-    #rt-status-dot.online { background: #22c55e; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-    @keyframes fadeUp { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
 
     /* ── Navbar icon buttons ── */
     .nav-icon-btn {
@@ -284,15 +230,6 @@
 
 {% set is_admin = session.get('user') and session['user']['role'] == 'admin' %}
 <body class="{{ 'layout-admin' if is_admin else 'layout-user' }}">
-
-<!-- ── Real-time toast container ── -->
-<div id="rt-toasts" aria-live="polite"></div>
-
-<!-- ── Connection status ── -->
-<div id="rt-status">
-  <span id="rt-status-dot"></span>
-  <span id="rt-status-text">Reconnecting…</span>
-</div>
 
 {% if session.get('user') %}
   {% if is_admin %}
@@ -795,58 +732,7 @@
   }, { passive: true });
 })();
 
-/* ══════════════════════════════════════════════════════════
-   REAL-TIME TOAST SYSTEM
-   ══════════════════════════════════════════════════════════ */
-window.RT = (function() {
-  var container = document.getElementById('rt-toasts');
-
-  var icons = {
-    success: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-    error:   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-    warning: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-    info:    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
-    message: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-  };
-
-  function show(opts) {
-    if (!container) return;
-    var type  = opts.type || 'info';
-    var title = opts.title || '';
-    var msg   = opts.message || '';
-    var link  = opts.link || null;
-    var duration = opts.duration || 4000;
-
-    var el = document.createElement('div');
-    el.className = 'rt-toast ' + type;
-    el.innerHTML =
-      '<span class="rt-toast-icon">' + (icons[type] || icons.info) + '</span>' +
-      '<div class="rt-toast-body">' +
-        (title ? '<div class="rt-toast-title">' + title + '</div>' : '') +
-        (msg   ? '<div class="rt-toast-msg">'   + msg   + '</div>' : '') +
-      '</div>' +
-      '<button class="rt-toast-close" aria-label="Close">&#x2715;</button>' +
-      '<div class="rt-toast-progress"></div>';
-
-    if (link) { el.style.cursor = 'pointer'; el.addEventListener('click', function(e) { if (!e.target.closest('.rt-toast-close')) window.location = link; }); }
-    el.querySelector('.rt-toast-close').addEventListener('click', function(e) { e.stopPropagation(); dismiss(el); });
-    container.appendChild(el);
-
-    var tid = setTimeout(function() { dismiss(el); }, duration);
-    el._dismissTimer = tid;
-    return el;
-  }
-
-  function dismiss(el) {
-    if (!el || el._dismissed) return;
-    el._dismissed = true;
-    clearTimeout(el._dismissTimer);
-    el.style.animation = 'toastOut .22s ease forwards';
-    setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 230);
-  }
-
-  return { show: show, dismiss: dismiss };
-})();
+/* Toast system removed */
 </script>
 
 {% if session.get('user') and session['user'].get('role') != 'admin' %}
@@ -877,7 +763,7 @@ window.RT = (function() {
     b.style.display = count > 0 ? 'flex' : 'none';
   }
 
-  function refreshBadge(url, badgeId, prevRef, toastType, toastTitle, toastMsg, toastLink) {
+  function refreshBadge(url, badgeId, prevRef) {
     fetch(url)
       .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
       .then(function(d) {
@@ -887,13 +773,7 @@ window.RT = (function() {
         if (badgeId === 'chatBadge')  updateMobBadge('mobChatBadge',  c);
         if (badgeId === 'notifBadge') updateMobBadge('mobNotifBadge', c);
 
-        // Fire toast only when count increases (skip very first load)
-        if (!firstRun && c > prevRef[0]) {
-          RT.show({ type: toastType, title: toastTitle, message: toastMsg, link: toastLink, duration: 5000 });
-          // Subtle bell shake on icon
-          var bell = document.getElementById(badgeId === 'chatBadge' ? 'chatBell' : 'notifBell');
-          if (bell) { bell.classList.add('bell-shake'); setTimeout(function(){ bell.classList.remove('bell-shake'); }, 600); }
-        }
+        // Toast notifications removed — badges still update silently
         prevRef[0] = c;
       }).catch(function(){});
   }
@@ -901,8 +781,8 @@ window.RT = (function() {
   var pn = [0], pc = [0];
 
   function refresh() {
-    refreshBadge(notifUrl, 'notifBadge', pn, 'info',    'New Notification', 'You have a new notification.', "{{ url_for('user.notifications') }}");
-    refreshBadge(chatUrl,  'chatBadge',  pc, 'message', 'New Message',      'You received a new message.',  "{{ url_for('chat.inbox') }}");
+    refreshBadge(notifUrl, 'notifBadge', pn);
+    refreshBadge(chatUrl,  'chatBadge',  pc);
     firstRun = false;
   }
 
@@ -911,8 +791,8 @@ window.RT = (function() {
   else refresh();
 
   // Poll at different intervals — optimized to balance responsiveness and server load
-  setInterval(function() { refreshBadge(notifUrl,'notifBadge',pn,'info','New Notification','You have a new notification.',"{{ url_for('user.notifications') }}"); }, 30000);
-  setInterval(function() { refreshBadge(chatUrl,'chatBadge',pc,'message','New Message','You received a new message.',"{{ url_for('chat.inbox') }}"); }, 30000);
+  setInterval(function() { refreshBadge(notifUrl, 'notifBadge', pn); }, 30000);
+  setInterval(function() { refreshBadge(chatUrl,  'chatBadge',  pc); }, 30000);
 })();
 </script>
 {% endif %}
@@ -928,9 +808,7 @@ window.RT = (function() {
       var c = Number(d.count) || 0;
       var b = document.getElementById('adminChatBadge');
       if (b) { b.textContent = c; b.style.display = c > 0 ? 'inline-flex' : 'none'; }
-      if (c > prevChat && prevChat >= 0) {
-        RT.show({ type:'message', title:'New Message', message:'A user sent you a message.', link:"{{ url_for('chat.inbox') }}", duration:5000 });
-      }
+      // Toast notifications removed
       prevChat = c;
     }).catch(function(){});
   }
@@ -963,9 +841,7 @@ document.addEventListener('visibilitychange', function() {
 
 /* ── Connection status indicator ── */
 (function() {
-  var statusEl  = document.getElementById('rt-status');
-  var dotEl     = document.getElementById('rt-status-dot');
-  var textEl    = document.getElementById('rt-status-text');
+
   var wasOnline = true;
 
   function setOnline() {

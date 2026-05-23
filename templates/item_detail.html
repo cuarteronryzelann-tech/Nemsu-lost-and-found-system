@@ -154,7 +154,7 @@
     <!-- Item image -->
     <div style="margin-bottom:1.25rem;">
       {% if item.image_filename %}
-        <img src="{{ url_for('static', filename='uploads/items/' ~ item.image_filename) }}"
+        <img src="{{ '/static/uploads/items/' ~ item.image_filename }}"
              alt="{{ item.name }}"
              style="max-width:100%;max-height:320px;border-radius:12px;border:1px solid #e2e8f0;display:block;"
              loading="lazy" decoding="async"

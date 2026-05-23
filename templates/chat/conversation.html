@@ -434,7 +434,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
            class="conv-item {% if c.id == conv.id %}active{% endif %}">
           <div class="conv-avatar">
             {% if c.other_pic and c.other_pic_status == 'approved' %}
-              <img src="{{ url_for('static', filename='uploads/profiles/' ~ c.other_pic) }}" alt="" />
+              <img src="{{ '/static/uploads/profiles/' ~ c.other_pic }}" alt="" />
             {% else %}
               {% if c.other_role == 'admin' %}🛡️{% else %}👤{% endif %}
             {% endif %}
@@ -464,7 +464,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
       <a href="{{ url_for('chat.inbox') }}" class="chat-back-btn">‹</a>
       <div class="chat-header-avatar">
         {% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
-          <img src="{% if other_user.profile_picture.startswith('data:') %}{{ other_user.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ other_user.profile_picture) }}{% endif %}" alt="{{ other_user.full_name }}" />
+          <img src="{% if other_user.profile_picture.startswith('data:') %}{{ other_user.profile_picture }}{% else %}{{ '/static/uploads/profiles/' ~ other_user.profile_picture }}{% endif %}" alt="{{ other_user.full_name }}" />
         {% else %}
           {% if other_user.role == 'admin' %}🛡️{% else %}👤{% endif %}
         {% endif %}
@@ -509,7 +509,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
             {% if not is_mine %}
             <div class="msg-avatar">
               {% if msg.sender_pic and msg.sender_pic_status == 'approved' %}
-                <img src="{% if msg.sender_pic.startswith('data:') %}{{ msg.sender_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ msg.sender_pic) }}{% endif %}" />
+                <img src="{% if msg.sender_pic.startswith('data:') %}{{ msg.sender_pic }}{% else %}{{ '/static/uploads/profiles/' ~ msg.sender_pic }}{% endif %}" />
               {% else %}
                 {% if msg.sender_role == 'admin' %}🛡️{% else %}👤{% endif %}
               {% endif %}
@@ -532,7 +532,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                 {% else %}
                   {% if msg.image_filename %}
                   <div class="msg-attachment-img">
-                    <img src="{{ url_for('static', filename='uploads/chat/' ~ msg.image_filename) }}"
+                    <img src="{{ '/static/uploads/chat/' ~ msg.image_filename }}"
                          alt="image" onclick="openLightbox(this.src)" />
                   </div>
                   {% endif %}
@@ -612,7 +612,7 @@ const SEND_URL      = "{{ url_for('chat.send', conv_id=conv.id) }}";
 const POLL_URL      = "{{ url_for('chat.poll', conv_id=conv.id) }}";
 const UNSEND_BASE   = "/chat/{{ conv.id }}/delete/";
 const PROFILE_BASE  = "{{ url_for('static', filename='uploads/profiles/') }}";
-const CHAT_BASE     = "{{ url_for('static', filename='uploads/chat/') }}";
+const CHAT_BASE     = "/static/uploads/chat/";
 
 {% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
   {% if other_user.profile_picture.startswith('data:') %}

@@ -288,7 +288,7 @@
                 {% if pic.startswith('data:') %}
                     <img src="{{ pic }}" alt="Avatar">
                 {% else %}
-                    <img src="{{ url_for('static', filename='uploads/profiles/' ~ pic) }}" alt="Avatar">
+                    <img src="{{ '/static/uploads/profiles/' ~ pic }}" alt="Avatar">
                 {% endif %}
             {% else %}
                 <i class="fas fa-user-circle"></i>
@@ -377,7 +377,7 @@
             <div class="user-card">
                 <div class="user-card-avatar">
                     {% if u.profile_picture and u.profile_pic_status == 'approved' %}
-                        <img src="{% if u.profile_picture.startswith('data:') %}{{ u.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ u.profile_picture) }}{% endif %}"
+                        <img src="{% if u.profile_picture.startswith('data:') %}{{ u.profile_picture }}{% else %}{{ '/static/uploads/profiles/' ~ u.profile_picture }}{% endif %}"
                              alt="{{ u.full_name }}"
                              onerror="this.parentElement.innerHTML='{{ u.full_name[0]|upper if u.full_name else '?' }}'">
                     {% else %}
@@ -420,7 +420,7 @@
             <div class="item-card" data-type="{{ item.type }}">
                 <div class="item-card-image">
                     {% if item.image_filename %}
-                    <img src="{{ url_for('static', filename='uploads/items/' ~ item.image_filename) }}"
+                    <img src="{{ '/static/uploads/items/' ~ item.image_filename }}"
                          alt="{{ item.name }}"
                          loading="lazy"
                          decoding="async"
@@ -437,7 +437,7 @@
                                 {% if item.reporter_pic.startswith('data:') %}
                                     <img src="{{ item.reporter_pic }}" alt="">
                                 {% else %}
-                                    <img src="{{ url_for('static', filename='uploads/profiles/' ~ item.reporter_pic) }}" alt="">
+                                    <img src="{{ '/static/uploads/profiles/' ~ item.reporter_pic }}" alt="">
                                 {% endif %}
                             {% else %}👤{% endif %}
                         </div>
