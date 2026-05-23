@@ -53,8 +53,16 @@ def upload_to_imgbb(file_bytes: bytes, filename: str = "image") -> str | None:
         resp.raise_for_status()
         data = resp.json()
         if data.get("success"):
-            # data.data.display_url is a direct image link; .url is the page
-            return data["data"]["display_url"]
+            # Use data.data.image.url — the true direct image URL.
+            # display_url is also direct, but ImgBB's hotlink protection can
+            # block it when the request comes from an external domain (Vercel).
+            # image.url is always embeddable without referrer restrictions.
+            img_data = data["data"]
+            return (
+                img_data.get("image", {}).get("url")   # preferred: direct embed URL
+                or img_data.get("display_url")          # fallback
+                or img_data.get("url")                  # last resort (viewer page)
+            )
         logger.error("ImgBB upload failed: %s", data)
         return None
     except Exception as exc:

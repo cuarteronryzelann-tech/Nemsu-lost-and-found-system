@@ -533,7 +533,10 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                   {% if msg.image_filename %}
                   <div class="msg-attachment-img">
                     <img src="{{ image_src(msg.image_filename, 'chat') }}"
-                         alt="image" onclick="openLightbox(this.src)"
+                         alt="📷 Image"
+                         referrerpolicy="no-referrer"
+                         crossorigin="anonymous"
+                         onclick="openLightbox(this.src)"
                          onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>📷 Image unavailable</div>')" />
                   </div>
                   {% endif %}
@@ -814,7 +817,7 @@ function appendMessage(msg, type, isPending = false) {
   let attachHtml = '';
   if (msg.image) {
     const src = msg.image.startsWith('http') ? msg.image : CHAT_BASE + msg.image;
-    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" onclick="openLightbox(this.src)" onerror="this.style.display='none'" /></div>`;
+    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="📷 Image" referrerpolicy="no-referrer" crossorigin="anonymous" onclick="openLightbox(this.src)" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>📷 Image unavailable</div>')" /></div>`;
   }
 
   const contentHtml = msg.content
