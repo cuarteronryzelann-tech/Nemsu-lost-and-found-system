@@ -20,10 +20,11 @@ html, body { height: 100%; }
     display: grid;
     grid-template-columns: 300px 1fr;
     height: calc(100vh - var(--navbar-height, 60px));
+    height: calc(100dvh - var(--navbar-height, 60px));
     overflow: hidden;
     background: var(--bg, #f0f4f8);
 }
-body.layout-admin .chat-layout { height: 100vh; }
+body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 
 /* ══════════════════════════════════════════════════════════
    SIDEBAR
@@ -397,6 +398,7 @@ body.layout-admin .chat-layout { height: 100vh; }
     .messages-container { padding: .75rem .65rem; gap: .45rem; }
     .chat-header   { padding: .65rem 1rem; min-height: 56px; }
     .chat-item-ref-badge { max-width: 110px; }
+    .chat-input-area { padding-bottom: max(.8rem, env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 480px) {
@@ -410,11 +412,8 @@ body.layout-admin .chat-layout { height: 100vh; }
     .messages-container { padding: .6rem .5rem; }
 }
 
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-    .chat-input-area {
-        padding-bottom: max(.8rem, env(safe-area-inset-bottom));
-    }
-}
+
+
 </style>
 {% endblock %}
 

@@ -274,6 +274,7 @@
     @media (max-width: 640px) {
       .mobile-bottom-nav { display: block; }
       .user-main .main-content { padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
+      body:has(.chat-layout) .main-content { padding-bottom: 0 !important; }
       .nav-hamburger { display: none !important; }
       .nav-icon-btn  { display: none !important; }
     }
@@ -604,9 +605,9 @@
     <main class="main-content">
       {{ self.content() }}
     </main>
+    {% if request.endpoint != 'chat.conversation' %}
     <footer class="footer"><p>&copy; 2024 NEMSU Lost &amp; Found System.</p></footer>
-
-    <!-- ── Mobile Bottom Navigation Bar (user layout only) ── -->
+    {% endif %}
     {% if request.endpoint != 'chat.conversation' %}
     <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
       <div class="mobile-bottom-nav-inner">
@@ -1048,7 +1049,13 @@ document.head.appendChild(styleEl);
     transform: scale(1); opacity: 1; pointer-events: all;
   }
   @media (max-width: 640px) {
-    #ai-window { bottom: 136px; right: .85rem; width: calc(100vw - 24px); max-height: 400px; }
+    #ai-window {
+      bottom: 0; right: 0; left: 0; top: 0;
+      width: 100%; max-width: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      transform-origin: bottom center;
+    }
   }
 
   /* ── Header ── */
