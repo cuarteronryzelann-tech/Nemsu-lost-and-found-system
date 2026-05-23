@@ -169,20 +169,43 @@ def send(conv_id):
     if content and len(content) > 1000:
         content = content[:1000]
 
-    # ✅ Handle image upload — try ImgBB first, fall back to local disk
+    # Handle image upload — ImgBB is required on Vercel/production.
+    # On local dev, fall back to disk only when ImgBB key is absent.
     filename = None
     if file and file.filename:
         from utils.imgbb import upload_file_to_imgbb
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+
         imgbb_url = upload_file_to_imgbb(file)
         if imgbb_url:
-            filename = imgbb_url  # full URL stored in DB
+            filename = imgbb_url  # full HTTPS URL stored in DB
         else:
-            ext = file.filename.rsplit(".", 1)[-1].lower()
-            filename = f"{uuid.uuid4().hex}.{ext}"
-            upload_folder = _chat_upload_folder()
-            os.makedirs(upload_folder, exist_ok=True)
-            file.seek(0)
-            file.save(os.path.join(upload_folder, filename))
+            is_serverless = bool(
+                os.environ.get("VERCEL") or os.environ.get("PRODUCTION")
+            )
+            if is_serverless:
+                # /tmp is ephemeral on Vercel — images would 404 immediately.
+                # Return a clear error so the user knows the upload failed.
+                _log.error(
+                    "ImgBB upload failed on Vercel and local disk cannot be "
+                    "used. Check IMGBB_API_KEY in Vercel environment variables."
+                )
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Image upload failed. The server could not reach ImgBB. "
+                        "Please check your connection and try again."
+                    )
+                }), 500
+            else:
+                # Local dev only — save to disk as before
+                ext = file.filename.rsplit(".", 1)[-1].lower()
+                filename = f"{uuid.uuid4().hex}.{ext}"
+                upload_folder = _chat_upload_folder()
+                os.makedirs(upload_folder, exist_ok=True)
+                file.seek(0)
+                file.save(os.path.join(upload_folder, filename))
 
     # ✅ UPDATED: pass filename
     msg = send_message(conv_id, user_id, content, filename)

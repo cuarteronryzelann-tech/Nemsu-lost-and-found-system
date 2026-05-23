@@ -414,6 +414,18 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 
 
 
+
+/* ── Toast notification ── */
+#chat-toast {
+  position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%);
+  background: #1e293b; color: #fff; padding: .6rem 1.2rem;
+  border-radius: 999px; font-size: .82rem; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+  z-index: 99999; white-space: nowrap; max-width: 90vw;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+#chat-toast.error { background: #dc2626; }
+#chat-toast.visible { opacity: 1; }
 </style>
 {% endblock %}
 
@@ -533,10 +545,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                   {% if msg.image_filename %}
                   <div class="msg-attachment-img">
                     <img src="{{ image_src(msg.image_filename, 'chat') }}"
-                         alt="📷 Image"
-                         referrerpolicy="no-referrer"
-                         crossorigin="anonymous"
-                         onclick="openLightbox(this.src)"
+                         alt="image" onclick="openLightbox(this.src)"
                          onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>📷 Image unavailable</div>')" />
                   </div>
                   {% endif %}
@@ -603,6 +612,8 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 </div>
 
 <!-- Lightbox -->
+<div id="chat-toast"></div>
+
 <div id="imgLightbox" onclick="closeLightbox()">
   <button class="lb-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
   <img id="lightboxImg" src="" alt="full image" onclick="event.stopPropagation()" />
@@ -790,8 +801,12 @@ async function sendMessage() {
       if (data.message.id > lastMsgId) lastMsgId = data.message.id;
     } else {
       if (tempWrap) tempWrap.remove();
+      showToast(data.error || 'Failed to send message.', 'error');
     }
-  } catch(e) { if (tempWrap) tempWrap.remove(); }
+  } catch(e) {
+    if (tempWrap) tempWrap.remove();
+    showToast('Network error. Please try again.', 'error');
+  }
 }
 
 // ── Render message ──
@@ -817,7 +832,7 @@ function appendMessage(msg, type, isPending = false) {
   let attachHtml = '';
   if (msg.image) {
     const src = msg.image.startsWith('http') ? msg.image : CHAT_BASE + msg.image;
-    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="📷 Image" referrerpolicy="no-referrer" crossorigin="anonymous" onclick="openLightbox(this.src)" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>📷 Image unavailable</div>')" /></div>`;
+    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" onclick="openLightbox(this.src)" onerror="this.style.display='none'" /></div>`;
   }
 
   const contentHtml = msg.content
@@ -935,5 +950,17 @@ window.addEventListener('load', () => {
   startPolling();
   document.getElementById('msg-input').focus();
 });
+
+// ── Toast helper ──
+let _toastTimer = null;
+function showToast(msg, type = 'info') {
+  const el = document.getElementById('chat-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = type === 'error' ? 'error visible' : 'visible';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = el.className.replace('visible','').trim(); }, 3500);
+}
+
 </script>
 {% endblock %}
