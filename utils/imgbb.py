@@ -1,12 +1,10 @@
 """
 utils/imgbb.py - ImgBB Image Hosting Utility
 =============================================
-Uses urllib.request (Python built-in) instead of the requests library.
+Matches the pattern used in NEMSU Marketplace (working on Vercel).
 
-WHY: Vercel's egress proxy blocks outbound calls made via the third-party
-`requests` library (returns 403 "Host not in allowlist"), but allows the
-same call made via Python's built-in urllib.request. This matches how the
-NEMSU Marketplace project successfully uploads to ImgBB on Vercel.
+Uses urllib.request (Python built-in) — NOT the requests library.
+Vercel's egress proxy blocks `requests` but allows urllib.request.
 """
 
 import os
@@ -26,13 +24,11 @@ def upload_to_imgbb(file_bytes: bytes, filename: str = "image") -> str | None:
     """
     Upload raw image bytes to ImgBB using urllib (Vercel-compatible).
     Returns the permanent direct image URL on success, None on failure.
+    Matches marketplace _upload_to_imgbb() exactly.
     """
     api_key = os.environ.get("IMGBB_API_KEY", "").strip()
     if not api_key:
-        logger.error(
-            "IMGBB_API_KEY is not set — cannot upload image. "
-            "Add it to your Vercel environment variables."
-        )
+        logger.error("IMGBB_API_KEY is not set — cannot upload image.")
         return None
 
     try:
@@ -44,18 +40,14 @@ def upload_to_imgbb(file_bytes: bytes, filename: str = "image") -> str | None:
         }).encode("utf-8")
 
         req = urllib.request.Request(IMGBB_UPLOAD_URL, data=data)
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read().decode("utf-8"))
 
         if result.get("success"):
-            img_data = result["data"]
-            direct_url = (
-                img_data.get("image", {}).get("url")   # true CDN direct URL
-                or img_data.get("display_url")          # fallback
-                or img_data.get("url")                  # last resort
-            )
-            logger.info("ImgBB upload succeeded: %s", direct_url)
-            return direct_url
+            # Use display_url — same as marketplace (stable, permanent CDN link)
+            url = result["data"].get("display_url") or result["data"].get("url")
+            logger.info("ImgBB upload succeeded: %s", url)
+            return url
 
         logger.error("ImgBB upload failed: %s", result)
         return None

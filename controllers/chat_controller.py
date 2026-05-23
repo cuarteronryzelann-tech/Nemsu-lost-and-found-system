@@ -172,32 +172,12 @@ def send(conv_id):
     if content and len(content) > 1000:
         content = content[:1000]
 
-    # Handle image upload via ImgBB — exact same method as NEMSU Marketplace (working).
-    # Uses urllib + base64 urlencode. Never falls back to local disk.
+    # Handle image upload via ImgBB — uses utils/imgbb (matches NEMSU Marketplace).
     filename = None
     if file and file.filename:
-        import base64, urllib.request, urllib.parse, json as _json
-        _api_key = os.environ.get("IMGBB_API_KEY", "").strip()
-        if not _api_key:
-            return jsonify({"ok": False, "error": "Image upload not configured."}), 500
-        try:
-            file.seek(0)
-            _b64 = base64.b64encode(file.read()).decode("utf-8")
-            _data = urllib.parse.urlencode({
-                "key":   _api_key,
-                "image": _b64,
-                "name":  file.filename or "upload",
-            }).encode("utf-8")
-            _req = urllib.request.Request("https://api.imgbb.com/1/upload", data=_data)
-            with urllib.request.urlopen(_req, timeout=15) as _resp:
-                _result = _json.loads(_resp.read().decode("utf-8"))
-            if _result.get("success"):
-                filename = (_result["data"].get("image", {}).get("url") or _result["data"].get("display_url") or _result["data"].get("url"))
-            else:
-                logger.error("ImgBB rejected: %s", _result)
-                return jsonify({"ok": False, "error": "Image upload failed. Please try again."}), 500
-        except Exception as _exc:
-            logger.error("ImgBB upload error: %s", _exc)
+        from utils.imgbb import upload_file_to_imgbb
+        filename = upload_file_to_imgbb(file)
+        if not filename:
             return jsonify({"ok": False, "error": "Image upload failed. Please try again."}), 500
 
         # ✅ UPDATED: pass filename

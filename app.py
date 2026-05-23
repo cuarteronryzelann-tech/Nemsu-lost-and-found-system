@@ -64,21 +64,22 @@ def create_app():
 
     # ── Jinja2 globals ───────────────────────────────────────────────────
     def image_src(value, subfolder="items"):
-        """Resolve stored image value (ImgBB URL, data URI, or filename) to src URL.
+        """Resolve stored image value to a usable <img src> URL.
 
-        Chat images uploaded before ImgBB integration were stored as bare
-        filenames (e.g. 'c0ece0a850824e928e8a6637c71099aa.jpg'). On Vercel
-        those files no longer exist, so we return '' for chat bare-filename
-        values — the template renders '📷 Image unavailable' with no HTTP
-        request, which eliminates the 404 log spam entirely.
+        Matches NEMSU Marketplace img_url() logic:
+        - ImgBB/external URL (starts with 'http') → return as-is
+        - base64 data URI (starts with 'data:')   → return as-is
+        - Bare filename in 'chat' subfolder        → return '' (legacy local
+          uploads are gone on Vercel's ephemeral FS; avoids 404 requests)
+        - Bare filename in other subfolders        → /uploads/<subfolder>/<filename>
+        - None / empty                             → return ''
         """
         if not value:
             return ""
         if value.startswith("http") or value.startswith("data:"):
             return value
-        # Legacy bare filename — file is gone on Vercel's ephemeral filesystem.
-        # Return '' so the template shows the unavailable placeholder without
-        # making an HTTP request that would 404.
+        # Legacy bare filename for chat — file no longer exists on Vercel.
+        # Return '' so templates show the unavailable placeholder silently.
         if subfolder == "chat":
             return ""
         return f"/uploads/{subfolder}/{value}"

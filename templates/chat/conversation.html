@@ -543,19 +543,19 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                   </div>
                 {% else %}
                   {% if msg.image_filename %}
+                  {% set img_url = image_src(msg.image_filename, 'chat') %}
+                  {% if img_url %}
                   <div class="msg-attachment-img">
-                    {% set img_url = image_src(msg.image_filename, 'chat') %}
-                    {% if img_url.startswith('http') %}
+                    <a href="{{ img_url }}" target="_blank" rel="noopener">
                       <img src="{{ img_url }}"
-                           alt="📷 Image"
+                           alt="Image"
+                           loading="lazy"
                            referrerpolicy="no-referrer"
-                           onclick="openLightbox(this.src)"
-                           onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
-                      <div style="display:none;padding:.5rem;color:#94a3b8;font-size:.8rem;">📷 Image unavailable</div>
-                    {% else %}
-                      <div style="padding:.5rem;color:#94a3b8;font-size:.8rem;">📷 Image unavailable</div>
-                    {% endif %}
+                           onclick="openLightbox(this.src); return false;"
+                           onerror="this.closest('.msg-attachment-img').innerHTML='<div style=padding:.5rem;color:#94a3b8;font-size:.8rem>📷 Image unavailable</div>'" />
+                    </a>
                   </div>
+                  {% endif %}
                   {% endif %}
                   {% if msg.content %}
                   <div class="msg-content">{{ msg.content }}</div>
@@ -846,17 +846,14 @@ function appendMessage(msg, type, isPending = false) {
     ? `<div class="msg-sender-row"><span class="msg-sender-name">{{ other_user.full_name.split()[0] }}</span></div>`
     : '';
 
+  // ── Image attachment — matches NEMSU Marketplace pattern ──
   let attachHtml = '';
   if (msg.image) {
     if (msg.image.startsWith('http') || msg.image.startsWith('blob:')) {
-      const src = msg.image;
-      const refPolicy = msg.image.startsWith('blob:') ? '' : 'referrerpolicy="no-referrer"';
-      attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" ${refPolicy} onclick="openLightbox(this.src)" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>&#128247; Image unavailable</div>')" /></div>`;
-    } else {
-      // Local filename — file no longer exists on server (pre-ImgBB upload).
-      // Show placeholder without making a request that would 404.
-      attachHtml = `<div class="msg-attachment-img"><div style="padding:.5rem;color:#94a3b8;font-size:.8rem;">&#128247; Image unavailable</div></div>`;
+      // ImgBB URL or local blob preview — render clickable image
+      attachHtml = `<div class="msg-attachment-img"><a href="${msg.image}" target="_blank" rel="noopener"><img src="${msg.image}" alt="Image" loading="lazy" referrerpolicy="no-referrer" onclick="openLightbox(this.src); return false;" onerror="this.closest('.msg-attachment-img').innerHTML='<div style=padding:.5rem;color:#94a3b8;font-size:.8rem>&#128247; Image unavailable</div>'" /></a></div>`;
     }
+    // Bare filename (legacy) → no img tag, no 404 request, just silence
   }
 
   const contentHtml = msg.content
