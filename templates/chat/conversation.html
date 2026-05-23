@@ -179,6 +179,7 @@ body.layout-admin .chat-layout { height: 100vh; }
     flex-direction: column;
     max-width: min(68%, calc(100% - 48px));
     align-items: flex-start;
+    min-width: 0;
 }
 .message-wrap.sent .message-bubble-group { align-items: flex-end; }
 
@@ -189,30 +190,29 @@ body.layout-admin .chat-layout { height: 100vh; }
 
 /* Bubble wrapper */
 .message-bubble {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    min-width: 0;
+    display: block;
     max-width: 100%;
 }
-.message-wrap.sent .message-bubble { align-items: flex-end; }
+.message-wrap.sent .message-bubble { text-align: right; }
+.message-wrap.received .message-bubble { text-align: left; }
 
 /* The text pill */
 .msg-content {
+    display: inline-block;
     padding: .65rem 1rem;
     border-radius: 16px;
     font-size: .875rem;
     line-height: 1.55;
-    display: inline-block;
-    /* min-width via ch = roughly 4 characters wide — prevents 1-char stacking */
-    min-width: 4ch;
+    /* Never narrower than ~10 characters — stops "he/llo" stacking */
+    min-width: min(10ch, 100%);
     max-width: 100%;
-    /* normal wrapping — browser reflows freely */
-    white-space: pre-wrap;
+    white-space: normal;
     word-break: break-word;
     overflow-wrap: break-word;
     box-sizing: border-box;
+    /* Always left-align text inside bubble */
     text-align: left;
+    vertical-align: top;
 }
 .message-wrap.received .msg-content {
     background: #fff;
@@ -240,13 +240,13 @@ body.layout-admin .chat-layout { height: 100vh; }
 
 /* Footer (time + status) */
 .msg-footer {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: .3rem;
     margin-top: .25rem;
-    align-self: flex-end;
+    justify-content: flex-end;
 }
-.message-wrap.received .msg-footer { align-self: flex-start; }
+.message-wrap.received .msg-footer { justify-content: flex-start; }
 .msg-time { font-size: .67rem; color: #94a3b8; white-space: nowrap; }
 
 /* Status ticks */
