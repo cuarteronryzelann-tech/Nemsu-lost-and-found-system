@@ -8,7 +8,8 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    session, request, flash, current_app, jsonify)
 from functools import wraps
 from models.item_model import create_item, get_item_by_id, get_items_for_search, find_matching_items, get_items_by_user, update_item
-from models.claim_model import create_claim, get_claims_by_user
+from models.claim_model import (create_claim, get_claims_by_user,
+                                get_claims_for_finder, finder_respond_to_claim)
 from models.user_model import (update_user_profile, update_profile_picture,
                                 update_last_active, log_activity, get_user_by_id)
 from models.notification_model import (get_notifications, get_unread_count,
@@ -869,33 +870,29 @@ def claim_item(item_id):
         return render_template("user/claim_item.html", item=item)
 
     user_id = session["user"]["id"]
-    create_claim(item_id=item_id, claimant_id=user_id,
-                 student_id_text=student_id_text,
-                 full_name_text=full_name_text,
-                 last_location=last_location)
+    claim_id = create_claim(item_id=item_id, claimant_id=user_id,
+                            student_id_text=student_id_text,
+                            full_name_text=full_name_text,
+                            last_location=last_location)
 
-    # Auto-approve: mark item as claimed immediately (no admin step)
-    from models.item_model import update_item_status
-    update_item_status(item_id, status="claimed", approved_by=user_id)
+    log_activity(user_id, "submitted_claim", f"Item ID: {item_id}, Claim ID: {claim_id}")
 
-    log_activity(user_id, "claimed_item", f"Item ID: {item_id}")
-
-    # Notify the claimant — already approved
+    # Notify the claimant — now waiting for finder to respond
     add_notification(
         user_id=user_id,
-        message=f"✅ You successfully claimed '{item.get('name', 'an item')}'. Coordinate with the finder to pick it up.",
-        notif_type="success",
+        message=f"📋 Your claim for '{item.get('name', 'an item')}' has been submitted. Waiting for the finder to accept or reject it.",
+        notif_type="info",
         link="/user/my-claims"
     )
 
-    # Notify the found-item reporter via in-app + Gmail
+    # Notify the finder — they must accept or reject
     reporter_id = item.get("reported_by")
     if reporter_id and reporter_id != user_id:
         add_notification(
             user_id=reporter_id,
-            message=f"🎉 Your found item '{item.get('name', 'an item')}' was claimed by {session['user']['full_name']}! Please arrange the handover.",
-            notif_type="success",
-            link=f"/items/{item_id}"
+            message=f"📬 Someone is claiming your found item '{item.get('name', 'an item')}'. Review their details and accept or reject the claim.",
+            notif_type="info",
+            link=f"/user/finder-claims"
         )
         try:
             from models.user_model import get_user_by_id as _get_user
@@ -908,13 +905,13 @@ def claim_item(item_id):
                     recipient_name=reporter["full_name"].split()[0],
                     claimant_name=session["user"]["full_name"],
                     item_name=item.get("name", "your item"),
-                    item_link=f"/items/{item_id}",
+                    item_link=f"/user/finder-claims",
                     app_base_url=_os.environ.get("APP_BASE_URL", "")
                 )
         except Exception:
             pass
 
-    flash(f"✅ You have successfully claimed '{item.get('name', 'this item')}'! Contact the finder to arrange pickup.", "success")
+    flash(f"📋 Your claim for '{item.get('name', 'this item')}' has been submitted! The finder will review and accept or reject it.", "success")
     return redirect(url_for("user.my_claims"))
 
 
@@ -1033,3 +1030,84 @@ def user_status(user_id):
     except Exception:
         online = False
     return jsonify({"online": online, "is_online": bool(u.get("is_online"))})
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Finder Claim Review — the person who found the item sees all claims and
+# can accept or reject each one. On accept → chat is opened automatically.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@user_bp.route("/finder-claims")
+@login_required
+def finder_claims():
+    """Show all claims for items the current user reported as found."""
+    user_id = session["user"]["id"]
+    claims  = get_claims_for_finder(user_id)
+    return render_template("user/finder_claims.html", claims=claims)
+
+
+@user_bp.route("/finder-claims/<int:claim_id>/respond", methods=["POST"])
+@login_required
+def finder_respond_claim(claim_id):
+    """Finder accepts or rejects a claim. On accept, open a chat conversation."""
+    user_id = session["user"]["id"]
+    action  = request.form.get("action")  # 'accepted' or 'rejected'
+
+    if action not in ("accepted", "rejected"):
+        flash("Invalid action.", "error")
+        return redirect(url_for("user.finder_claims"))
+
+    claim = finder_respond_to_claim(claim_id, finder_id=user_id, action=action)
+    if not claim:
+        flash("Claim not found or you are not authorised to respond.", "error")
+        return redirect(url_for("user.finder_claims"))
+
+    item_name    = claim.get("item_name", "the item")
+    claimant_id  = claim["claimant_id"]
+    item_id      = claim["item_id"]
+
+    if action == "accepted":
+        # Mark the item as claimed
+        from models.item_model import update_item_status
+        update_item_status(item_id, status="claimed", approved_by=user_id)
+
+        # Open/get a chat conversation between finder and claimant
+        from models.chat_model import get_or_create_conversation, send_message
+        conv = get_or_create_conversation(user_id, claimant_id, item_id=item_id)
+
+        # Send an automatic opening message from the finder
+        finder_name = session["user"]["full_name"]
+        send_message(
+            conv_id=conv["id"],
+            sender_id=user_id,
+            content=(
+                f"👋 Hi! I've accepted your claim for \"{item_name}\". "
+                f"Let's arrange the handover. When and where would you like to meet? "
+                f"Please suggest a venue or I'll propose one."
+            )
+        )
+
+        log_activity(user_id, "accepted_claim", f"Claim ID: {claim_id}, Item ID: {item_id}")
+
+        # Notify claimant
+        add_notification(
+            user_id=claimant_id,
+            message=f"✅ The finder accepted your claim for '{item_name}'! Open the chat to set your meetup venue.",
+            notif_type="success",
+            link=f"/chat/{conv['id']}"
+        )
+
+        flash(f"✅ You accepted the claim for '{item_name}'. A chat has been opened to coordinate the handover.", "success")
+        return redirect(url_for("chat.conversation", conv_id=conv["id"]))
+
+    else:  # rejected
+        log_activity(user_id, "rejected_claim", f"Claim ID: {claim_id}, Item ID: {item_id}")
+
+        add_notification(
+            user_id=claimant_id,
+            message=f"❌ The finder rejected your claim for '{item_name}'. You may contact admin for assistance.",
+            notif_type="error",
+            link="/user/my-claims"
+        )
+
+        flash(f"❌ You rejected the claim for '{item_name}'. The claimant has been notified.", "warning")
+        return redirect(url_for("user.finder_claims"))

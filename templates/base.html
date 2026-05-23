@@ -412,6 +412,13 @@
           </svg>
           My Claims
         </a>
+        <a href="{{ url_for('user.finder_claims') }}" class="nav-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
+            <path d="M21 10H3M21 6H3M21 14H3M21 18H3"/>
+          </svg>
+          Claim Requests
+          {% if finder_pending_count > 0 %}<span class="nav-badge" style="background:#ef4444;">{{ finder_pending_count }}</span>{% endif %}
+        </a>
         <a href="{{ url_for('user.profile') }}" class="nav-link">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -495,6 +502,13 @@
               <line x1="7" y1="7" x2="7.01" y2="7"/>
             </svg>
             My Claims
+          </a>
+          <a href="{{ url_for('user.finder_claims') }}" class="nav-drawer-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;">
+              <path d="M21 10H3M21 6H3M21 14H3M21 18H3"/>
+            </svg>
+            Claim Requests
+            {% if finder_pending_count > 0 %}<span class="nav-badge" style="background:#ef4444;position:relative;top:0;right:0;margin-left:.4rem;">{{ finder_pending_count }}</span>{% endif %}
           </a>
           <a href="{{ url_for('chat.inbox') }}" class="nav-drawer-link">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0;">

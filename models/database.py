@@ -304,8 +304,9 @@ def _init_schema(cursor):
         )
     """)
     _migrate(cursor, "claims", [
-        ("confirmed_by_user", "INTEGER DEFAULT 0"),
-        ("pickup_location",   "TEXT"),
+        ("confirmed_by_user",     "INTEGER DEFAULT 0"),
+        ("pickup_location",       "TEXT"),
+        ("finder_responded_at",   "TEXT"),
     ])
 
     cursor.execute("""

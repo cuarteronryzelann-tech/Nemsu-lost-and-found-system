@@ -52,6 +52,21 @@ def create_app():
 
     init_db()
 
+    # ── Global template context ───────────────────────────────────────────
+    from flask import session as _session
+    @app.context_processor
+    def inject_finder_pending_count():
+        """Provide pending claim count for nav badge on every page."""
+        try:
+            if "user" in _session:
+                from models.claim_model import get_claims_for_finder
+                claims = get_claims_for_finder(_session["user"]["id"])
+                count = sum(1 for c in claims if c.get("status") == "pending_finder")
+                return {"finder_pending_count": count}
+        except Exception:
+            pass
+        return {"finder_pending_count": 0}
+
     # ── Cache-Control for JSON API endpoints ─────────────────────────────
     @app.after_request
     def set_cache_headers(response):

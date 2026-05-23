@@ -77,6 +77,19 @@
         <div class="detail-group"><label>Your Note</label><span>{{ claim.last_location }}</span></div>
         <div class="detail-group"><label>Submitted</label><span>{{ claim.created_at[:10] if claim.created_at else 'N/A' }}</span></div>
       </div>
+      {% if claim.status == 'pending_finder' %}
+      <div class="status-notice notice-pending">
+        ⏳ <strong>Waiting for Finder's Decision</strong> — The finder is reviewing your claim. You'll be notified once they respond.
+      </div>
+      {% endif %}
+      {% if claim.status == 'accepted' %}
+      <div class="status-notice notice-approved">
+        ✅ <strong>Claim Accepted!</strong> The finder accepted your claim. Open the chat to arrange the meetup venue and pick up your item.
+        {% if claim.pickup_location %}
+        <div class="pickup-location">📍 Pickup point: {{ claim.pickup_location }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
       {% if claim.status == 'approved' %}
       <div class="status-notice notice-approved">
         ✅ <strong>Claim Successful!</strong> Please chat with the finder to arrange where to pick up the item. Bring your valid student ID.
@@ -86,10 +99,13 @@
       </div>
       {% endif %}
       {% if claim.status == 'denied' %}
-      <div class="status-notice notice-denied">❌ Your claim was not approved. Contact admin for assistance.</div>
+      <div class="status-notice notice-denied">❌ Your claim was not approved by admin. Contact admin for assistance.</div>
+      {% endif %}
+      {% if claim.status == 'rejected' %}
+      <div class="status-notice notice-denied">❌ The finder rejected your claim. Contact admin if you believe this is an error.</div>
       {% endif %}
       <div class="claim-actions">
-        {% if claim.status == 'approved' and not claim.confirmed_by_user %}
+        {% if claim.status in ('approved', 'accepted') and not claim.confirmed_by_user %}
         <form method="POST" action="{{ url_for('user.confirm_claim', claim_id=claim.id) }}"
               onsubmit="return confirm('Confirm you have physically received this item?');">
           <button type="submit" class="btn-confirm">✅ Confirm I Received It</button>
@@ -97,6 +113,11 @@
         {% endif %}
         {% if claim.confirmed_by_user %}
         <span class="confirmed-note">✅ You confirmed receiving this item</span>
+        {% endif %}
+        {% if claim.status == 'accepted' %}
+        <a href="{{ url_for('chat.inbox') }}" class="btn-nav" style="text-decoration:none;">
+          💬 Chat with Finder
+        </a>
         {% endif %}
         {% if claim.status == 'approved' %}
         <button class="btn-nav" onclick="openNavModal('{{ claim.item_name | e }}','{{ claim.pickup_location | e }}')">

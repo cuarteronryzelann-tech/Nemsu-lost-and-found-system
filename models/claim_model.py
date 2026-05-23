@@ -33,7 +33,7 @@ def create_claim(item_id: int, claimant_id: int, student_id_text: str,
     cursor.execute("""
         INSERT INTO claims (item_id, claimant_id, student_id_text,
                             full_name_text, last_location, status)
-        VALUES (?, ?, ?, ?, ?, 'approved')
+        VALUES (?, ?, ?, ?, ?, 'pending_finder')
     """, (item_id, claimant_id, student_id_text, full_name_text, last_location))
     cursor.execute("PRAGMA foreign_keys = ON")
 
@@ -189,3 +189,70 @@ def confirm_claim_by_user(claim_id: int, claimant_id: int) -> bool:
     updated = cursor.rowcount > 0
     conn.close()
     return updated
+
+def get_claims_for_finder(finder_user_id: int) -> list[dict]:
+    """
+    Retrieves all claim requests for items that the given user reported as found.
+    Used so the finder can see who has claimed their found item.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT c.*,
+               i.name           AS item_name,
+               i.category       AS item_category,
+               i.image_filename AS item_image,
+               i.location       AS item_location,
+               u.full_name      AS claimant_full_name,
+               u.email          AS claimant_email,
+               u.id             AS claimant_user_id
+        FROM claims c
+        JOIN items i ON c.item_id     = i.id
+        JOIN users u ON c.claimant_id = u.id
+        WHERE i.reported_by = ?
+        ORDER BY c.created_at DESC
+    """, (finder_user_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def finder_respond_to_claim(claim_id: int, finder_id: int, action: str) -> dict | None:
+    """
+    Allows the finder to accept or reject a claim.
+    Returns the updated claim dict, or None if not authorized.
+
+    action: 'accepted' | 'rejected'
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Verify finder owns the item
+    cursor.execute("""
+        SELECT c.*, i.reported_by, i.name AS item_name
+        FROM claims c
+        JOIN items i ON i.id = c.item_id
+        WHERE c.id = ?
+    """, (claim_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    claim = dict(row)
+    if claim["reported_by"] != finder_id:
+        conn.close()
+        return None
+
+    new_status = "accepted" if action == "accepted" else "rejected"
+    cursor.execute("""
+        UPDATE claims SET status = ?, reviewed_by = ?
+        WHERE id = ?
+    """, (new_status, finder_id, claim_id))
+    conn.commit()
+    conn.close()
+
+    claim["status"] = new_status
+    return claim
