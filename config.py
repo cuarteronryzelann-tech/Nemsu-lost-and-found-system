@@ -4,6 +4,14 @@ config.py - Application Configuration
 
 import os
 
+# Load .env file automatically for local development.
+# On Vercel/production, env vars are injected directly — dotenv is a no-op there.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed; rely on real environment variables
+
 IS_PRODUCTION = bool(os.environ.get("PRODUCTION"))
 
 

@@ -790,14 +790,21 @@ async function sendMessage() {
 
   input.value = '';
   input.style.height = 'auto';
+
+  // Capture local preview before clearAttachment() nulls selectedFile
+  let localPreviewUrl = null;
+  if (selectedFile) {
+    localPreviewUrl = URL.createObjectURL(selectedFile);
+  }
   clearAttachment();
 
-  // Optimistic bubble
-  const tempWrap = appendMessage({ content, time: 'Sending…' }, 'sent', true);
+  // Optimistic bubble — show local image preview immediately while ImgBB uploads
+  const tempWrap = appendMessage({ content, image: localPreviewUrl, time: 'Sending…' }, 'sent', true);
 
   try {
     const res  = await fetch(SEND_URL, { method: 'POST', body: fd });
     const data = await res.json();
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     if (data.ok) {
       if (tempWrap) tempWrap.remove();
       const finalWrap = appendMessage({
@@ -808,10 +815,12 @@ async function sendMessage() {
       }, 'sent');
       if (data.message.id > lastMsgId) lastMsgId = data.message.id;
     } else {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
       if (tempWrap) tempWrap.remove();
       showToast(data.error || 'Failed to send message.', 'error');
     }
   } catch(e) {
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     if (tempWrap) tempWrap.remove();
     showToast('Network error. Please try again.', 'error');
   }
@@ -839,9 +848,10 @@ function appendMessage(msg, type, isPending = false) {
 
   let attachHtml = '';
   if (msg.image) {
-    if (msg.image.startsWith('http')) {
+    if (msg.image.startsWith('http') || msg.image.startsWith('blob:')) {
       const src = msg.image;
-      attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" referrerpolicy="no-referrer" onclick="openLightbox(this.src)" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>&#128247; Image unavailable</div>')" /></div>`;
+      const refPolicy = msg.image.startsWith('blob:') ? '' : 'referrerpolicy="no-referrer"';
+      attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" ${refPolicy} onclick="openLightbox(this.src)" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>&#128247; Image unavailable</div>')" /></div>`;
     } else {
       // Local filename — file no longer exists on server (pre-ImgBB upload).
       // Show placeholder without making a request that would 404.
