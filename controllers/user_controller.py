@@ -63,13 +63,13 @@ def image_src(value, subfolder="items"):
     """Resolve a stored image value to a usable <img src> URL.
     - ImgBB URL (starts with http): return as-is
     - base64 data URI: return as-is
-    - filename: prepend /static/uploads/<subfolder>/
+    - filename: prepend /uploads/<subfolder>/
     """
     if not value:
         return ""
     if value.startswith("http") or value.startswith("data:"):
         return value
-    return f"/static/uploads/{subfolder}/{value}"
+    return f"/uploads/{subfolder}/{value}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

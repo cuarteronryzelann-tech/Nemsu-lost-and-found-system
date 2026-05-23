@@ -69,7 +69,7 @@ def create_app():
             return ""
         if value.startswith("http") or value.startswith("data:"):
             return value
-        return f"/static/uploads/{subfolder}/{value}"
+        return f"/uploads/{subfolder}/{value}"
     app.jinja_env.globals["image_src"] = image_src
 
     # ── Global template context ───────────────────────────────────────────
@@ -110,7 +110,7 @@ def create_app():
             mimetype="image/png",
         )
 
-    @app.route("/static/uploads/<subfolder>/<filename>")
+    @app.route("/uploads/<subfolder>/<filename>")
     def _serve_upload(subfolder, filename):
         from flask import send_from_directory, Response
         if ".." in subfolder or ".." in filename or "/" in filename:

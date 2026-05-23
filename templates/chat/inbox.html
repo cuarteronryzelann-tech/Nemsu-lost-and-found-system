@@ -339,7 +339,7 @@
 
         <div class="conv-avatar">
           {% if conv.other_pic and conv.other_pic_status == 'approved' %}
-            <img src="{% if conv.other_pic.startswith('data:') %}{{ conv.other_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ conv.other_pic) }}{% endif %}"
+            <img src="{% if conv.other_pic.startswith('data:') %}{{ conv.other_pic }}{% else %}{{ '/uploads/profiles/' ~ conv.other_pic }}{% endif %}"
                  alt="{{ conv.other_name }}" />
           {% else %}
             {% if conv.other_role == 'admin' %}🛡️{% else %}👤{% endif %}

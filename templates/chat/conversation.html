@@ -634,14 +634,14 @@ const OTHER_UID     = {{ other_user.id }};
 const SEND_URL      = "{{ url_for('chat.send', conv_id=conv.id) }}";
 const POLL_URL      = "{{ url_for('chat.poll', conv_id=conv.id) }}";
 const UNSEND_BASE   = "/chat/{{ conv.id }}/delete/";
-const PROFILE_BASE  = "{{ url_for('static', filename='uploads/profiles/') }}";
-const CHAT_BASE     = "/static/uploads/chat/";
+const PROFILE_BASE  = "/uploads/profiles/";
+const CHAT_BASE     = "/uploads/chat/";
 
 {% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
   {% if other_user.profile_picture.startswith('data:') %}
 const OTHER_AVATAR = '{{ other_user.profile_picture }}';
   {% else %}
-const OTHER_AVATAR = '{{ url_for("static", filename="uploads/profiles/" ~ other_user.profile_picture) }}';
+const OTHER_AVATAR = '/uploads/profiles/{{ other_user.profile_picture }}';
   {% endif %}
 {% else %}
 const OTHER_AVATAR = '';

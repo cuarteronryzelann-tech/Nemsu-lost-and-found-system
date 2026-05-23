@@ -585,7 +585,7 @@
                             <div class="user-info">
                                 <div class="avatar">
                                     {% if u.profile_picture and u.profile_pic_status == 'approved' %}
-                                        <img src="{% if u.profile_picture.startswith('data:') %}{{ u.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ u.profile_picture) }}{% endif %}" 
+                                        <img src="{% if u.profile_picture.startswith('data:') %}{{ u.profile_picture }}{% else %}{{ '/uploads/profiles/' ~ u.profile_picture }}{% endif %}" 
                                              alt="{{ u.full_name }}"
                                              onerror="this.parentElement.innerHTML='👤'">
                                     {% else %}👤{% endif %}

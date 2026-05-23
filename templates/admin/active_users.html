@@ -553,7 +553,7 @@
                 {% if u.profile_picture and u.profile_picture.startswith('data:') %}
                     <img src="{{ u.profile_picture }}" alt="{{ u.full_name }}" />
                 {% else %}
-                    <img src="{{ url_for('static', filename='uploads/profiles/' ~ u.profile_picture) }}" 
+                    <img src="{{ '/uploads/profiles/' ~ u.profile_picture }}" 
                          alt="{{ u.full_name }}"
                          onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-circle\'></i>'" />
                 {% endif %}
