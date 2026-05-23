@@ -178,32 +178,36 @@ body.layout-admin .chat-layout { height: 100vh; }
     display: flex;
     flex-direction: column;
     max-width: min(68%, calc(100% - 48px));
-    align-items: flex-start;
-    min-width: 0;
+    /* NO align-items here — it collapses fit-content children */
 }
-.message-wrap.sent .message-bubble-group { align-items: flex-end; }
+/* Push sent group to the right via the parent wrap */
+.message-wrap.sent .message-bubble-group {
+    align-items: flex-end;
+}
 
 /* Sender name (received only) */
 .msg-sender-row { margin-bottom: .2rem; display: flex; align-items: center; gap: .4rem; }
 .msg-sender-name { font-size: .72rem; font-weight: 700; color: #64748b; letter-spacing: .01em; }
 .message-wrap.sent .msg-sender-row { display: none; }
 
-/* Bubble wrapper — kept simple, no flex tricks */
+/* Bubble wrapper */
 .message-bubble {
-    max-width: 100%;
+    width: 100%;
 }
+.message-wrap.sent .message-bubble { text-align: right; }
 
-/* The text pill */
+/* The text pill — fit-content works when parent has full width */
 .msg-content {
+    display: inline-block;
     padding: .65rem 1rem;
     border-radius: 16px;
     font-size: .875rem;
     line-height: 1.55;
-    width: fit-content;
     max-width: 100%;
     word-break: break-word;
     overflow-wrap: break-word;
     box-sizing: border-box;
+    text-align: left;
 }
 .message-wrap.received .msg-content {
     background: #fff;
