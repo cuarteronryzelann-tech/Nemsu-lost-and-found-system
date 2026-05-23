@@ -174,7 +174,7 @@ body.layout-admin .chat-layout { height: 100vh; }
     display: flex;
     flex-direction: column;
     max-width: min(68%, calc(100% - 48px));
-    min-width: 0;
+    min-width: 80px;
     align-items: flex-start;
 }
 .message-wrap.sent .message-bubble-group {
@@ -202,12 +202,13 @@ body.layout-admin .chat-layout { height: 100vh; }
     font-size: .875rem;
     line-height: 1.55;
     word-break: break-word;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
-    /* ← key fix: don't stretch, only as wide as content */
+    overflow-wrap: break-word;
+    white-space: normal;
     display: inline-block;
+    min-width: 60px;
     max-width: 100%;
     box-sizing: border-box;
+    text-align: left;
 }
 .message-wrap.received .msg-content {
     background: #fff;
