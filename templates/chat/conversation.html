@@ -724,7 +724,7 @@ async function poll() {
   } catch(e) {}
 }
 
-function startPolling() { if (!pollTimer) { poll(); pollTimer = setInterval(poll, 4000); } }
+function startPolling() { if (!pollTimer) { poll(); pollTimer = setInterval(poll, 8000); } }
 function stopPolling()  { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 document.addEventListener('visibilitychange', () => document.hidden ? stopPolling() : startPolling());
 

@@ -805,8 +805,8 @@
   else refresh();
 
   // Poll at different intervals — optimized to balance responsiveness and server load
-  setInterval(function() { refreshBadge(notifUrl, 'notifBadge', pn); }, 30000);
-  setInterval(function() { refreshBadge(chatUrl,  'chatBadge',  pc); }, 30000);
+  setInterval(function() { refreshBadge(notifUrl, 'notifBadge', pn); }, 60000);
+  setInterval(function() { refreshBadge(chatUrl,  'chatBadge',  pc); }, 60000);
 })();
 </script>
 {% endif %}
@@ -828,7 +828,7 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
   else refresh();
-  setInterval(refresh, 30000);
+  setInterval(refresh, 60000);
 })();
 </script>
 {% endif %}
@@ -840,7 +840,7 @@
   var hbUrl  = "{{ url_for('user.heartbeat') }}";
   var offUrl = "{{ url_for('user.go_offline') }}";
   function beat() { fetch(hbUrl,{method:'POST',headers:{'Content-Type':'application/json'}}).catch(function(){}); }
-  beat(); setInterval(beat, 60000);
+  beat(); setInterval(beat, 90000);
   window.addEventListener('beforeunload', function() { navigator.sendBeacon(offUrl); });
 })();
 {% endif %}

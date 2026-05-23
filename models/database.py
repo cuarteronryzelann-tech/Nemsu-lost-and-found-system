@@ -218,15 +218,34 @@ class TursoCursor:
         return getattr(self._cur, "rowcount", -1)
 
     def execute(self, sql, params=None):
-        try:
-            if params is not None:
-                self._cur.execute(sql, tuple(params))
-            else:
-                self._cur.execute(sql)
-            self.lastrowid = getattr(self._cur, "lastrowid", None)
-        except Exception as e:
-            raise RuntimeError(f"Turso DB error: {e}") from e
-        return self
+        global _turso_conn
+        _retries = 3
+        _delay = 0.2
+        for _attempt in range(_retries):
+            try:
+                if params is not None:
+                    self._cur.execute(sql, tuple(params))
+                else:
+                    self._cur.execute(sql)
+                self.lastrowid = getattr(self._cur, "lastrowid", None)
+                return self
+            except Exception as e:
+                _msg = str(e)
+                # On connection limit error: invalidate pool and retry
+                if "connections limit" in _msg or "stream error" in _msg:
+                    with _turso_lock:
+                        _turso_conn = None  # force reconnect on next call
+                    if _attempt < _retries - 1:
+                        time.sleep(_delay * (2 ** _attempt))
+                        # Re-acquire a fresh cursor from the new connection
+                        try:
+                            _new_conn = _get_turso_conn()
+                            self._cur = _new_conn._conn.cursor()
+                        except Exception:
+                            pass
+                        continue
+                raise RuntimeError(f"Turso DB error: {e}") from e
+        raise RuntimeError("Turso DB error: max retries exceeded")
 
     def executemany(self, sql, seq_of_params):
         try:

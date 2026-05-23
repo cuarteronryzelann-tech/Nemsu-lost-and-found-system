@@ -245,6 +245,14 @@ def send(conv_id):
 @chat_bp.route("/<int:conv_id>/poll")
 @login_required
 def poll(conv_id):
+    try:
+        return _poll_impl(conv_id)
+    except Exception as _e:
+        logger.warning("poll DB error (overload?): %s", _e)
+        return jsonify({"ok": True, "messages": [], "other_online": False,
+                        "other_typing": False, "seen_ids": []}), 200
+
+def _poll_impl(conv_id):
     user_id = session["user"]["id"]
     conv = get_conversation_by_id(conv_id)
 
@@ -299,7 +307,10 @@ def poll(conv_id):
 @chat_bp.route("/unread-count")
 @login_required
 def unread_count():
-    count = get_total_unread(session["user"]["id"])
+    try:
+        count = get_total_unread(session["user"]["id"])
+    except Exception:
+        count = 0  # DB overloaded — return 0 silently, client retries on next poll
     return jsonify({"count": count})
 
 
