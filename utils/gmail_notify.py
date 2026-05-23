@@ -42,14 +42,16 @@ def _cfg(key: str) -> str:
 
 def _get_access_token() -> str | None:
     """Exchange the refresh token for a short-lived access token."""
-    refresh_token  = _cfg("GMAIL_REFRESH_TOKEN")
-    client_id      = _cfg("GOOGLE_CLIENT_ID")
-    client_secret  = _cfg("GOOGLE_CLIENT_SECRET")
+    refresh_token = _cfg("GMAIL_REFRESH_TOKEN")
+
+    # Support both Web app keys (GOOGLE_CLIENT_ID) and Desktop app keys (CLIENT_ID)
+    client_id     = _cfg("GOOGLE_CLIENT_ID") or _cfg("CLIENT_ID")
+    client_secret = _cfg("GOOGLE_CLIENT_SECRET") or _cfg("CLIENT_SECRET")
 
     if not all([refresh_token, client_id, client_secret]):
         logger.warning(
-            "Gmail API: missing GMAIL_REFRESH_TOKEN, GOOGLE_CLIENT_ID, "
-            "or GOOGLE_CLIENT_SECRET — skipping notification."
+            "Gmail API: missing GMAIL_REFRESH_TOKEN, client_id, "
+            "or client_secret — skipping notification."
         )
         return None
 
