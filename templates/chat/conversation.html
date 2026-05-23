@@ -188,30 +188,22 @@ body.layout-admin .chat-layout { height: 100vh; }
 .msg-sender-name { font-size: .72rem; font-weight: 700; color: #64748b; letter-spacing: .01em; }
 .message-wrap.sent .msg-sender-row { display: none; }
 
-/* Bubble wrapper */
+/* Bubble wrapper — kept simple, no flex tricks */
 .message-bubble {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
     max-width: 100%;
-    min-width: 0;
 }
-.message-wrap.sent .message-bubble { align-items: flex-end; }
 
 /* The text pill */
 .msg-content {
-    display: table;          /* table shrinks to content width on ALL browsers/devices */
     padding: .65rem 1rem;
     border-radius: 16px;
     font-size: .875rem;
     line-height: 1.55;
-    min-width: 80px;         /* hard floor — "hello" always fits on one line */
+    width: fit-content;
     max-width: 100%;
-    white-space: normal;
     word-break: break-word;
     overflow-wrap: break-word;
     box-sizing: border-box;
-    text-align: left;
 }
 .message-wrap.received .msg-content {
     background: #fff;
@@ -243,9 +235,9 @@ body.layout-admin .chat-layout { height: 100vh; }
     align-items: center;
     gap: .3rem;
     margin-top: .25rem;
-    align-self: flex-end;
 }
-.message-wrap.received .msg-footer { align-self: flex-start; }
+.message-wrap.sent     .msg-footer { justify-content: flex-end; }
+.message-wrap.received .msg-footer { justify-content: flex-start; }
 .msg-time { font-size: .67rem; color: #94a3b8; white-space: nowrap; }
 
 /* Status ticks */
