@@ -112,9 +112,9 @@ def create_app():
 
     @app.route("/static/uploads/<subfolder>/<filename>")
     def _serve_upload(subfolder, filename):
-        from flask import send_from_directory, abort
+        from flask import send_from_directory, Response
         if ".." in subfolder or ".." in filename or "/" in filename:
-            abort(400)
+            return Response("Bad Request", status=400)
         mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
         # Check 1: standard /tmp/uploads/<subfolder>/ path (items, profiles)
@@ -133,7 +133,22 @@ def create_app():
         if os.path.isfile(os.path.join(static_path, filename)):
             return send_from_directory(static_path, filename, mimetype=mime)
 
-        abort(404)
+        # File not found — return a 1x1 transparent GIF placeholder instead of a
+        # noisy 404. This handles chat images uploaded before ImgBB was integrated
+        # whose files no longer exist on Vercel's ephemeral /tmp filesystem.
+        # The onerror handlers in templates will hide the <img> anyway, but this
+        # silences the server-side 404 log spam.
+        _transparent_gif = (
+            b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00"
+            b"\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00\x00"
+            b"\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b"
+        )
+        return Response(
+            _transparent_gif,
+            status=200,
+            mimetype="image/gif",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)

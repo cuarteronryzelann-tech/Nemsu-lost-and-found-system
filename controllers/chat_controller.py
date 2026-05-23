@@ -137,9 +137,12 @@ def _chat_upload_folder():
     folder = _os.path.join(current_app.root_path, "static", "uploads", "chat")
     return folder
 
-# Eagerly create at module load so the folder always exists for local dev
+# Eagerly create upload folders at module load so they always exist.
+# On Vercel/production: /tmp/uploads/chat  (ephemeral, writable)
+# Locally: static/uploads/chat
 _local_chat_folder = os.path.join("static", "uploads", "chat")
 os.makedirs(_local_chat_folder, exist_ok=True)
+os.makedirs("/tmp/uploads/chat", exist_ok=True)  # always safe to create
 
 @chat_bp.route("/<int:conv_id>/send", methods=["POST"])
 @login_required
