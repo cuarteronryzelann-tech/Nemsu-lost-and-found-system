@@ -1,16 +1,18 @@
 """
-models/database.py - Database Connection Manager (Optimized)
-=============================================================
+models/database.py - Database Connection Manager
+=================================================
 Supports two modes:
   1. TURSO (cloud SQLite, free) — set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
   2. Local SQLite (fallback)    — used when env vars are not set
 
-Optimization changes:
-  - Local SQLite now uses a persistent connection pool (threading.local)
-    instead of opening/closing a new connection on every request.
-  - WAL journal mode + optimized PRAGMAs applied once at pool init.
-  - Connection pooling eliminates the per-request open/close overhead
-    which was the #1 source of lag on the local/Render SQLite path.
+Key fix for "Database connections limit exceeded" on Turso free tier:
+  - A single TursoConnection is cached per process (_turso_conn).
+  - get_connection() reuses it instead of opening a new one each request.
+  - The cached connection is validated before reuse; if stale, it reconnects.
+  - init_db() is guarded so it only runs once per process AND sets
+    SKIP_INIT_DB=1 pattern so cold-starts don't all race to create the schema.
+  - All callers should use `with get_connection() as conn:` — the context
+    manager commits on success and closes (no-op for pooled) on exit.
 """
 
 import os
@@ -37,18 +39,44 @@ def _get_local_conn():
     if conn is None:
         conn = sqlite3.connect(Config.DATABASE_PATH, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        # Performance PRAGMAs — applied once per connection
-        conn.execute("PRAGMA journal_mode=WAL")       # concurrent reads
-        conn.execute("PRAGMA synchronous=NORMAL")     # safe + faster than FULL
-        conn.execute("PRAGMA cache_size=-8000")       # 8 MB page cache
-        conn.execute("PRAGMA temp_store=MEMORY")      # temp tables in RAM
-        conn.execute("PRAGMA mmap_size=134217728")    # 128 MB memory-mapped I/O
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA cache_size=-8000")
+        conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA mmap_size=134217728")
         _local.conn = conn
     return conn
 
 
-def get_connection(retries: int = 3, backoff: float = 0.5):
-    if USE_TURSO:
+# ---------------------------------------------------------------------------
+# Turso connection pool — ONE connection reused per process
+# ---------------------------------------------------------------------------
+_turso_conn = None
+_turso_lock = threading.Lock()
+
+
+def _get_turso_conn(retries: int = 5, backoff: float = 0.3):
+    """
+    Return the cached process-level Turso connection, creating it if needed.
+    This is the KEY fix: Turso free tier allows very few concurrent connections.
+    Reusing one connection per Vercel function instance keeps us well within
+    the limit even when many requests hit the same warm instance.
+    """
+    global _turso_conn
+    # Fast path — already have a good connection
+    if _turso_conn is not None:
+        try:
+            # Cheap ping to verify the connection is still alive
+            _turso_conn._conn.execute("SELECT 1")
+            return _turso_conn
+        except Exception:
+            _turso_conn = None  # stale — fall through to reconnect
+
+    with _turso_lock:
+        # Re-check inside the lock
+        if _turso_conn is not None:
+            return _turso_conn
+
         import libsql_experimental as libsql
         last_err = None
         for attempt in range(retries):
@@ -57,12 +85,20 @@ def get_connection(retries: int = 3, backoff: float = 0.5):
                     database=TURSO_DATABASE_URL,
                     auth_token=TURSO_AUTH_TOKEN,
                 )
-                return TursoConnection(conn)
+                _turso_conn = _PooledTursoConnection(conn)
+                return _turso_conn
             except Exception as e:
                 last_err = e
                 if attempt < retries - 1:
-                    time.sleep(backoff * (2 ** attempt))  # 0.5s, 1s, 2s
-        raise RuntimeError(f"Turso DB error after {retries} attempts: {last_err}") from last_err
+                    time.sleep(backoff * (2 ** attempt))  # 0.3s, 0.6s, 1.2s …
+        raise RuntimeError(
+            f"Turso DB error after {retries} attempts: {last_err}"
+        ) from last_err
+
+
+def get_connection(retries: int = 5, backoff: float = 0.3):
+    if USE_TURSO:
+        return _get_turso_conn(retries=retries, backoff=backoff)
     return _LocalConnection(_get_local_conn())
 
 
@@ -71,11 +107,6 @@ def get_connection(retries: int = 3, backoff: float = 0.5):
 # ---------------------------------------------------------------------------
 
 class _LocalConnection:
-    """
-    Wraps a thread-local sqlite3.Connection so it looks like the Turso wrapper
-    (context-manager support, .cursor(), .commit(), .close()).
-    close() is a no-op — the connection stays open for the thread's lifetime.
-    """
     def __init__(self, conn):
         self._conn = conn
 
@@ -99,10 +130,53 @@ class _LocalConnection:
 
 
 # ---------------------------------------------------------------------------
-# Turso wrapper — sqlite3-compatible interface (unchanged)
+# Pooled Turso wrapper
+# close() is a no-op so callers' `finally: conn.close()` doesn't kill the pool.
+# ---------------------------------------------------------------------------
+
+class _PooledTursoConnection:
+    """
+    Wraps a single libsql connection that lives for the process lifetime.
+    Exposes the same interface as TursoConnection but never closes the
+    underlying connection — callers' close() calls are silently ignored.
+    """
+    def __init__(self, conn):
+        self._conn = conn
+        self._lock = threading.Lock()  # serialise concurrent request access
+
+    def cursor(self):
+        return TursoCursor(self._conn.cursor())
+
+    def commit(self):
+        try:
+            self._conn.commit()
+        except Exception:
+            pass
+
+    def close(self):
+        pass  # intentional no-op — keep the connection alive
+
+    def __enter__(self):
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if not exc_type:
+                try:
+                    self._conn.commit()
+                except Exception:
+                    pass
+        finally:
+            self._lock.release()
+
+
+# ---------------------------------------------------------------------------
+# Turso cursor / row wrappers (unchanged)
 # ---------------------------------------------------------------------------
 
 class TursoConnection:
+    """Legacy non-pooled wrapper kept for compatibility; not used by get_connection()."""
     def __init__(self, conn):
         self._conn = conn
 
@@ -216,13 +290,15 @@ _db_init_lock = threading.Lock()
 def init_db():
     """Initialize the database schema.
 
-    On Vercel (serverless), every cold start imports app.py and calls this.
+    On Vercel (serverless) every cold start imports app.py and calls this.
     The module-level ``_db_initialized`` flag ensures the schema migration
-    only runs *once* per Python process, preventing a burst of concurrent
-    Turso connections that exhausts the free-tier connection limit.
+    only runs *once* per Python process.
 
     Set SKIP_INIT_DB=1 to skip entirely (e.g. if you run migrations
-    separately in a one-off script).
+    separately in a one-off script).  This is strongly recommended for
+    production Vercel deployments — run migrations once locally or in a
+    release command, then set SKIP_INIT_DB=1 so cold starts don't open
+    an extra connection just to run CREATE TABLE IF NOT EXISTS.
     """
     global _db_initialized
     if SKIP_INIT_DB:
@@ -438,7 +514,6 @@ def _create_indexes(cursor):
         "CREATE INDEX IF NOT EXISTS idx_claims_item_id     ON claims(item_id)",
         "CREATE INDEX IF NOT EXISTS idx_claims_claimant    ON claims(claimant_id)",
         "CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email)",
-        # New composite indexes for hot queries
         "CREATE INDEX IF NOT EXISTS idx_items_status_type  ON items(status, type)",
         "CREATE INDEX IF NOT EXISTS idx_notif_uid_read     ON notifications(user_id, is_read)",
         "CREATE INDEX IF NOT EXISTS idx_msg_conv_read      ON messages(conversation_id, is_read)",
