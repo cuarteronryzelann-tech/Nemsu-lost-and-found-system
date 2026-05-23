@@ -178,7 +178,6 @@ body.layout-admin .chat-layout { height: 100vh; }
     display: flex;
     flex-direction: column;
     max-width: min(68%, calc(100% - 48px));
-    min-width: 80px;
     align-items: flex-start;
 }
 .message-wrap.sent .message-bubble-group { align-items: flex-end; }
@@ -193,22 +192,26 @@ body.layout-admin .chat-layout { height: 100vh; }
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    max-width: 100%;
+    width: 100%;
+    min-width: 0;
 }
 .message-wrap.sent .message-bubble { align-items: flex-end; }
 
-/* The text pill — shrink-wraps content, never collapses to single letters */
+/* The text pill */
 .msg-content {
     padding: .65rem 1rem;
     border-radius: 16px;
     font-size: .875rem;
     line-height: 1.55;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    display: inline-block;
-    min-width: 60px;
+    /* KEY FIXES: use max-content so the bubble grows to fit text naturally,
+       then clamp it so it never overflows the container */
+    width: max-content;
+    min-width: 0;
     max-width: 100%;
+    /* Only break truly unbreakable strings (URLs, no-space text) */
+    word-break: normal;
+    overflow-wrap: anywhere;
+    white-space: normal;
     box-sizing: border-box;
     text-align: left;
 }
@@ -399,8 +402,8 @@ body.layout-admin .chat-layout { height: 100vh; }
     .chat-sidebar  { display: none; }
     .chat-back-btn { display: flex; }
     .chat-main     { flex: 1; min-height: 0; }
-    .message-bubble-group { max-width: min(80%, calc(100% - 42px)); min-width: 80px; }
-    .msg-content   { font-size: .85rem; padding: .55rem .85rem; }
+    .message-bubble-group { max-width: min(80%, calc(100% - 42px)); }
+    .msg-content { font-size: .85rem; padding: .55rem .85rem; }
     .msg-avatar    { width: 28px; height: 28px; font-size: .75rem; }
     .messages-container { padding: .75rem .65rem; gap: .45rem; }
     .chat-header   { padding: .65rem 1rem; min-height: 56px; }
@@ -413,7 +416,7 @@ body.layout-admin .chat-layout { height: 100vh; }
 
 @media (max-width: 380px) {
     .message-bubble-group { max-width: min(88%, calc(100% - 38px)); }
-    .msg-content   { font-size: .82rem; padding: .5rem .75rem; }
+    .msg-content { font-size: .82rem; padding: .5rem .75rem; }
     .msg-avatar    { width: 26px; height: 26px; }
     .messages-container { padding: .6rem .5rem; }
 }
