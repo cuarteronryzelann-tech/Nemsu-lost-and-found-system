@@ -178,12 +178,9 @@ body.layout-admin .chat-layout { height: 100vh; }
     display: flex;
     flex-direction: column;
     max-width: min(68%, calc(100% - 48px));
-    /* NO align-items here — it collapses fit-content children */
+    align-items: flex-start;
 }
-/* Push sent group to the right via the parent wrap */
-.message-wrap.sent .message-bubble-group {
-    align-items: flex-end;
-}
+.message-wrap.sent .message-bubble-group { align-items: flex-end; }
 
 /* Sender name (received only) */
 .msg-sender-row { margin-bottom: .2rem; display: flex; align-items: center; gap: .4rem; }
@@ -192,22 +189,23 @@ body.layout-admin .chat-layout { height: 100vh; }
 
 /* Bubble wrapper */
 .message-bubble {
-    width: 100%;
+    max-width: 100%;
 }
-.message-wrap.sent .message-bubble { text-align: right; }
 
-/* The text pill — fit-content works when parent has full width */
+/* The text pill */
 .msg-content {
-    display: inline-block;
+    display: block;
     padding: .65rem 1rem;
     border-radius: 16px;
     font-size: .875rem;
     line-height: 1.55;
+    width: -webkit-fit-content;
+    width: fit-content;
     max-width: 100%;
+    min-width: 0;
     word-break: break-word;
     overflow-wrap: break-word;
     box-sizing: border-box;
-    text-align: left;
 }
 .message-wrap.received .msg-content {
     background: #fff;
