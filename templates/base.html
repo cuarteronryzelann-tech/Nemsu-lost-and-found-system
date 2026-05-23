@@ -1000,7 +1000,7 @@ document.head.appendChild(styleEl);
 
 {% block extra_js %}{% endblock %}
 
-{% if session.get('user') and not is_admin %}
+{% if session.get('user') and not is_admin and request.endpoint != 'chat.conversation' %}
 <!-- ══════════════════════════════════════════════════════════
      GEMINI AI CHATBOT WIDGET (Users only)
      ══════════════════════════════════════════════════════════ -->
@@ -1395,7 +1395,7 @@ document.head.appendChild(styleEl);
 </script>
 {% endif %}
 
-{% if session.get('user') and is_admin %}
+{% if session.get('user') and is_admin and request.endpoint != 'chat.conversation' %}
 <!-- ══════════════════════════════════════════════════════════
      GEMINI AI ADMIN ASSISTANT WIDGET
      ══════════════════════════════════════════════════════════ -->
