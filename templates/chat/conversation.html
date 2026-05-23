@@ -3,6 +3,16 @@
 
 {% block extra_css %}
 <style>
+/* ── Force-hide AI chatbot FABs on this page ── */
+#ai-fab,
+#ai-window,
+#admin-ai-fab,
+#admin-ai-window {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 /* ── LAYOUT FIX: Use explicit height on html/body/wrapper instead of :has() ── */
 html, body { height: 100%; margin: 0; padding: 0; }
 
