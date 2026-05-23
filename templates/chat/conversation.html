@@ -148,28 +148,30 @@ body.layout-admin .chat-layout { height: 100vh; }
 .msg-date-divider::before, .msg-date-divider::after { content:''; flex:1; height:1px; background:#e2e8f0; }
 .msg-date-divider span { background: #e8edf3; padding: .12rem .6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
 
-/* Message rows */
+/* ── Message rows (marketplace-style) ── */
 .message-wrap {
     display: flex;
     align-items: flex-end;
-    gap: .5rem;
+    gap: .55rem;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
 }
-.message-wrap.sent  { flex-direction: row-reverse; }
-.message-wrap.received { flex-direction: row; }
+.message-wrap.sent { flex-direction: row-reverse; }
 
+/* Circular avatar beside received messages */
 .msg-avatar {
-    width: 32px; height: 32px; border-radius: 50%;
+    width: 34px; height: 34px;
+    border-radius: 50%;
     overflow: hidden; flex-shrink: 0;
     border: 2px solid #e8edf3;
-    background: #e2e8f0; align-self: flex-end;
+    box-shadow: 0 1px 4px rgba(0,0,0,.12);
+    align-self: flex-end;
+    background: #e2e8f0;
     display: flex; align-items: center; justify-content: center; font-size: .85rem;
 }
 .msg-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* Group: sender name + one or more bubbles */
 .message-bubble-group {
     display: flex;
     flex-direction: column;
@@ -177,30 +179,21 @@ body.layout-admin .chat-layout { height: 100vh; }
     min-width: 80px;
     align-items: flex-start;
 }
-.message-wrap.sent .message-bubble-group {
-    align-items: flex-end;
-}
+.message-wrap.sent .message-bubble-group { align-items: flex-end; }
 
-.msg-sender-row { margin-bottom: .18rem; }
-.msg-sender-name { font-size: .7rem; font-weight: 700; color: #1a56db; }
+/* Sender name (received only) */
+.msg-sender-row { margin-bottom: .2rem; display: flex; align-items: center; gap: .4rem; }
+.msg-sender-name { font-size: .72rem; font-weight: 700; color: #64748b; letter-spacing: .01em; }
 .message-wrap.sent .msg-sender-row { display: none; }
 
-/* Bubble wrapper (holds attach + content + footer) */
-.message-bubble {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    min-width: 0;
-    max-width: 100%;
-}
+/* Bubble */
+.message-bubble { display: flex; flex-direction: column; align-items: flex-start; }
 .message-wrap.sent .message-bubble { align-items: flex-end; }
 
-/* The text pill */
 .msg-content {
     padding: .6rem .95rem;
     border-radius: 18px;
-    font-size: .875rem;
-    line-height: 1.55;
+    font-size: .875rem; line-height: 1.55;
     word-break: break-word;
     overflow-wrap: break-word;
     white-space: normal;
@@ -211,17 +204,13 @@ body.layout-admin .chat-layout { height: 100vh; }
     text-align: left;
 }
 .message-wrap.received .msg-content {
-    background: #fff;
-    border: 1px solid #e8edf3;
-    border-bottom-left-radius: 4px;
-    color: #1e293b;
+    background: #fff; border: 1px solid #e8edf3;
+    border-bottom-left-radius: 4px; color: #1e293b;
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
 .message-wrap.sent .msg-content {
-    background: linear-gradient(135deg, #1a56db, #2563eb);
-    color: #fff;
+    background: linear-gradient(135deg,#1a56db,#2563eb); color: #fff;
     border-bottom-right-radius: 4px;
-    box-shadow: 0 2px 8px rgba(26,86,219,.22);
 }
 
 /* Deleted */
@@ -238,23 +227,20 @@ body.layout-admin .chat-layout { height: 100vh; }
 
 /* Footer (time + status) — shrinks to its content, not full-width */
 .msg-footer {
-    display: inline-flex;
-    align-items: center;
-    gap: .3rem;
-    margin-top: .2rem;
-    /* stay on the same side as the bubble */
-    align-self: flex-end;
+    display: flex; align-items: center; gap: .3rem;
+    margin-top: .22rem; width: 100%;
 }
-.message-wrap.received .msg-footer { align-self: flex-start; }
-.msg-time { font-size: .65rem; color: #94a3b8; white-space: nowrap; }
+.message-wrap.sent     .msg-footer { justify-content: flex-end; }
+.message-wrap.received .msg-footer { justify-content: flex-start; }
+.msg-time { font-size: .65rem; color: #94a3b8; }
 
 /* Status ticks */
 .msg-status { display: inline-flex; align-items: center; gap: 0; line-height: 1; }
 .msg-status .tick-1,
 .msg-status .tick-2 { font-size: .68rem; display: inline-block; }
-.msg-status[data-status="sending"] .tick-1 { color: rgba(255,255,255,.5); }
+.msg-status[data-status="sending"] .tick-1 { color: #9ca3af; opacity: .5; }
 .msg-status[data-status="sending"] .tick-2 { display: none; }
-.msg-status[data-status="sent"]    .tick-1 { color: rgba(255,255,255,.7); }
+.msg-status[data-status="sent"]    .tick-1 { color: #9ca3af; }
 .msg-status[data-status="sent"]    .tick-2 { display: none; }
 .msg-status[data-status="seen"] .tick-1,
 .msg-status[data-status="seen"] .tick-2 { display: none; }
@@ -399,10 +385,10 @@ body.layout-admin .chat-layout { height: 100vh; }
     }
     .chat-sidebar  { display: none; }
     .chat-back-btn { display: flex; }
-    .chat-main     { flex: 1; min-height: 0; }
-    .message-bubble-group { max-width: min(80%, calc(100% - 42px)); }
-    .msg-content   { font-size: .85rem; padding: .55rem .85rem; }
-    .msg-avatar    { width: 28px; height: 28px; font-size: .75rem; }
+    .chat-main { flex: 1; min-height: 0; }
+    .message-bubble-group { max-width: 80%; }
+    .msg-content { font-size: .85rem; padding: .55rem .85rem; }
+    .msg-avatar { width: 28px; height: 28px; }
     .messages-container { padding: .75rem .65rem; gap: .45rem; }
     .chat-header   { padding: .65rem 1rem; min-height: 56px; }
     .chat-item-ref-badge { max-width: 110px; }
