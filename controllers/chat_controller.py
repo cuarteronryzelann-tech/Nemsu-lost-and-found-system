@@ -169,21 +169,59 @@ def send(conv_id):
     if content and len(content) > 1000:
         content = content[:1000]
 
-    # Handle image upload via ImgBB.
-    # NEVER fall back to local disk — files saved to /tmp on Vercel are
-    # wiped between invocations and immediately return 404.
+    # Handle image upload via ImgBB using multipart/form-data (correct per API docs).
+    # Never fall back to local disk — /tmp files are wiped between invocations.
     filename = None
     if file and file.filename:
-        from utils.imgbb import upload_file_to_imgbb
-        imgbb_url = upload_file_to_imgbb(file)
-        if imgbb_url:
-            filename = imgbb_url  # full HTTPS URL stored in DB
-        else:
-            # ImgBB failed — tell the user instead of saving a broken local file
-            return jsonify({
-                "ok": False,
-                "error": "Image upload failed. Please try again."
-            }), 500
+        import json, urllib.request, urllib.error
+        _api_key = os.environ.get("IMGBB_API_KEY", "").strip()
+        if not _api_key:
+            return jsonify({"ok": False, "error": "Image upload not configured."}), 500
+        try:
+            file.seek(0)
+            _file_bytes = file.read()
+            _fname = file.filename or "upload"
+
+            # Build multipart/form-data body manually
+            _boundary = "----ImgBBBoundary" + uuid.uuid4().hex
+            _body = (
+                f"--{_boundary}
+"
+                f'Content-Disposition: form-data; name="key"
+
+'
+                f"{_api_key}
+"
+                f"--{_boundary}
+"
+                f'Content-Disposition: form-data; name="image"; filename="{_fname}"
+'
+                f"Content-Type: application/octet-stream
+
+"
+            ).encode("utf-8") + _file_bytes + f"
+--{_boundary}--
+".encode("utf-8")
+
+            _req = urllib.request.Request(
+                "https://api.imgbb.com/1/upload",
+                data=_body,
+                headers={"Content-Type": f"multipart/form-data; boundary={_boundary}"},
+            )
+            with urllib.request.urlopen(_req, timeout=20) as _resp:
+                _result = json.loads(_resp.read().decode("utf-8"))
+
+            if _result.get("success"):
+                _d = _result["data"]
+                filename = (_d.get("image", {}).get("url")
+                            or _d.get("display_url")
+                            or _d.get("url"))
+            else:
+                logger.error("ImgBB rejected upload: %s", _result)
+                return jsonify({"ok": False, "error": "Image upload failed. Please try again."}), 500
+        except Exception as _exc:
+            logger.error("ImgBB upload error: %s", _exc)
+            return jsonify({"ok": False, "error": "Image upload failed. Please try again."}), 500
 
     # ✅ UPDATED: pass filename
     msg = send_message(conv_id, user_id, content, filename)
