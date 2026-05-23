@@ -113,11 +113,13 @@ def conversation(conv_id):
     other_user = get_user_by_id(other_id)
     messages = get_messages(conv_id)
     mark_messages_read(conv_id, user_id)
+    conversations = get_user_conversations(user_id)
 
     return render_template("chat/conversation.html",
                            conv=conv,
                            other_user=other_user,
                            messages=messages,
+                           conversations=conversations,
                            current_user_id=user_id)
 
 
@@ -232,8 +234,6 @@ def poll(conv_id):
     user_id = session["user"]["id"]
     conv = get_conversation_by_id(conv_id)
 
-    # Return empty result (not 403) when conv doesn't exist or user isn't a participant.
-    # This prevents client-side loops when a stale browser tab polls a ghost conversation.
     if not conv or (conv["user1_id"] != user_id and conv["user2_id"] != user_id):
         return jsonify({"ok": True, "messages": [], "error": "not_participant"}), 200
 
@@ -241,8 +241,27 @@ def poll(conv_id):
     new_msgs = get_messages_since(conv_id, since_id)
     mark_messages_read(conv_id, user_id)
 
+    # Other user's online status (active in last 2 min)
+    other_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
+    other_user = get_user_by_id(other_id)
+    other_online = False
+    try:
+        from datetime import datetime, timedelta
+        last_active = (other_user or {}).get("last_active", "")
+        if last_active:
+            last_dt = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S")
+            other_online = datetime.utcnow() - last_dt < timedelta(minutes=2)
+    except Exception:
+        pass
+
+    # seen_ids — messages we sent that the other user has now read
+    seen_ids = [m["id"] for m in new_msgs if m["sender_id"] == user_id and m.get("is_read")]
+
     return jsonify({
         "ok": True,
+        "other_online": other_online,
+        "other_typing": False,
+        "seen_ids": seen_ids,
         "messages": [
             {
                 "id": m["id"],
@@ -252,7 +271,8 @@ def poll(conv_id):
                 "sender_name": m["sender_name"],
                 "sender_pic": m.get("sender_pic", ""),
                 "created_at": m["created_at"],
-                "is_mine": m["sender_id"] == user_id
+                "is_mine": m["sender_id"] == user_id,
+                "is_deleted": bool(m.get("is_deleted")),
             } for m in new_msgs
         ]
     })

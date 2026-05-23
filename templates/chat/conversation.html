@@ -1,400 +1,332 @@
 {% extends "base.html" %}
-{% block title %}Chat with {{ other_user.full_name }} | NEMSU Lost &amp; Found{% endblock %}
+{% block title %}Chat with {{ other_user.full_name }} | NEMSU Lost & Found{% endblock %}
 
 {% block extra_css %}
 <style>
 /* ── Force-hide AI chatbot FABs on this page ── */
-#ai-fab,
-#ai-window,
-#admin-ai-fab,
-#admin-ai-window {
+#ai-fab, #ai-window, #admin-ai-fab, #admin-ai-window {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
 }
 
-/* ── LAYOUT FIX: Use explicit height on html/body/wrapper instead of :has() ── */
-html, body { height: 100%; margin: 0; padding: 0; }
-
-.chat-page-wrapper {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
-
-/* Offset for the top navbar — adjust if your navbar height differs */
-.chat-page-wrapper {
-    height: calc(100vh - var(--navbar-height, 60px));
-}
-body.layout-admin .chat-page-wrapper {
-    height: 100vh;
-}
-
-/* Override any main-content padding that would break the layout */
+/* ══════════════════════════════════════════════════════════
+   LAYOUT
+   ══════════════════════════════════════════════════════════ */
+html, body { height: 100%; }
 .main-content { padding: 0 !important; overflow: hidden !important; }
 
-.chat-wrap {
+.chat-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    height: calc(100vh - var(--navbar-height, 60px));
+    overflow: hidden;
+    background: var(--bg, #f0f4f8);
+}
+body.layout-admin .chat-layout { height: 100vh; }
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR
+   ══════════════════════════════════════════════════════════ */
+.chat-sidebar {
+    background: #fff;
+    border-right: 1px solid #e8edf3;
     display: flex;
     flex-direction: column;
-    flex: 1;
-    height: 100%;
-    min-height: 0;
-    background: #f0f4f8;
     overflow: hidden;
 }
-
-/* ── Header ── */
-.chat-header {
-    display: flex;
-    align-items: center;
-    gap: .8rem;
-    background: #fff;
+.chat-sidebar-header {
+    padding: 1rem 1.1rem 0.85rem;
     border-bottom: 1px solid #e8edf3;
+    display: flex; align-items: center; gap: .5rem;
+}
+.chat-sidebar-header h3 {
+    font-size: .95rem; font-weight: 800; margin: 0; color: #0f172a;
+    display: flex; align-items: center; gap: .45rem;
+}
+.chat-sidebar-header a {
+    margin-left: auto; font-size: .75rem; color: #1a56db;
+    text-decoration: none; font-weight: 600;
+}
+.conversation-list { flex: 1; overflow-y: auto; }
+.conversation-list::-webkit-scrollbar { width: 3px; }
+.conversation-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+
+.conv-item {
+    display: flex; align-items: center; gap: .75rem;
     padding: .8rem 1.1rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,.07);
-    flex-shrink: 0;
-    z-index: 10;
+    border-bottom: 1px solid #f0f4f8;
+    cursor: pointer; transition: background .15s;
+    text-decoration: none; color: inherit;
+}
+.conv-item:hover  { background: #f8fafc; }
+.conv-item.active { background: rgba(26,86,219,.06); border-left: 3px solid #1a56db; padding-left: calc(1.1rem - 3px); }
+.conv-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    overflow: hidden; flex-shrink: 0;
+    border: 2px solid #e8edf3;
+    background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+}
+.conv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.conv-info { flex: 1; min-width: 0; }
+.conv-name-row { display: flex; align-items: center; justify-content: space-between; gap: .3rem; }
+.conv-name { font-weight: 700; font-size: .85rem; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-time { font-size: .68rem; color: #94a3b8; flex-shrink: 0; }
+.conv-preview { font-size: .74rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: .1rem; }
+.conv-unread-badge {
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px; background: #1a56db; color: #fff;
+    font-size: .62rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CHAT MAIN
+   ══════════════════════════════════════════════════════════ */
+.chat-main { display: flex; flex-direction: column; overflow: hidden; background: #f0f4f8; }
+
+/* Header */
+.chat-header {
+    padding: .8rem 1.25rem;
+    background: #fff; border-bottom: 1px solid #e8edf3;
+    display: flex; align-items: center; gap: .85rem;
+    flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,.05);
     min-height: 62px;
 }
+.chat-back-btn {
+    display: none; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+    color: #64748b; text-decoration: none; flex-shrink: 0;
+    font-size: 1.1rem; font-weight: 300; transition: all .15s;
+}
+.chat-back-btn:hover { background: #e2e8f0; color: #1e293b; }
 .chat-header-avatar {
     width: 42px; height: 42px; border-radius: 50%;
-    background: linear-gradient(135deg,#1a56db,#3b82f6);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.15rem; overflow: hidden; flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(26,86,219,.25);
+    overflow: hidden; flex-shrink: 0;
+    border: 2.5px solid #1a56db;
+    box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+    background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
 }
-.chat-header-avatar img { width: 42px; height: 42px; object-fit: cover; border-radius: 50%; }
+.chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .chat-header-info { flex: 1; min-width: 0; }
-.chat-header-name {
-    font-weight: 800; font-size: .95rem; color: #0f172a;
-    display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
-}
-.chat-header-sub { font-size: .73rem; color: #64748b; margin-top: .1rem; }
+.chat-user-name { font-weight: 800; font-size: .92rem; color: #0f172a; display: flex; align-items: center; gap: .4rem; }
 .admin-badge {
-    font-size: .6rem; font-weight: 800; padding: .15rem .45rem;
+    font-size: .58rem; font-weight: 800; padding: .12rem .4rem;
     border-radius: 999px; background: linear-gradient(135deg,#fef3c7,#fde68a);
-    color: #92400e; border: 1px solid #fcd34d; letter-spacing: .03em;
+    color: #92400e; border: 1px solid #fcd34d;
 }
-.chat-back-btn {
-    font-size: .82rem; color: #64748b; text-decoration: none;
-    display: flex; align-items: center; gap: .3rem;
-    padding: .35rem .7rem; border-radius: 8px; transition: all .15s;
-    white-space: nowrap; flex-shrink: 0; font-weight: 600;
-    border: 1px solid #e2e8f0; background: #f8fafc;
-}
-.chat-back-btn:hover { background: #e2e8f0; color: #1e293b; border-color: #cbd5e1; }
-
-/* ── Status bar ── */
-.chat-status {
-    font-size: .73rem; color: #94a3b8;
-    padding: .2rem 1.1rem; background: #f8fafc;
-    border-bottom: 1px solid #eef2f7;
-    min-height: 22px; flex-shrink: 0;
+.chat-user-status { display: flex; align-items: center; gap: .35rem; font-size: .72rem; color: #94a3b8; margin-top: .1rem; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; transition: background .3s; }
+.status-dot.online { background: #22c55e; }
+.chat-item-ref-badge {
+    font-size: .72rem; color: #1a56db; background: #eff6ff;
+    border: 1px solid #bfdbfe; border-radius: 8px;
+    padding: .25rem .6rem; font-weight: 600; flex-shrink: 0;
+    white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* ── Messages area ── */
-.chat-messages {
+/* Messages */
+.messages-container {
     flex: 1; overflow-y: auto;
     padding: 1.1rem 1rem;
-    display: flex; flex-direction: column; gap: .45rem;
-    scroll-behavior: smooth;
-    min-height: 0;
+    display: flex; flex-direction: column; gap: .6rem;
+    scroll-behavior: smooth; min-height: 0;
     -webkit-overflow-scrolling: touch;
 }
-.chat-messages::-webkit-scrollbar { width: 4px; }
-.chat-messages::-webkit-scrollbar-track { background: transparent; }
-.chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+.messages-container::-webkit-scrollbar { width: 4px; }
+.messages-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 
 /* Date divider */
 .msg-date-divider {
-    text-align: center; font-size: .69rem; color: #94a3b8;
-    margin: .6rem 0; display: flex; align-items: center; gap: .5rem;
+    text-align: center; font-size: .68rem; color: #94a3b8;
+    margin: .4rem 0; display: flex; align-items: center; gap: .5rem;
 }
-.msg-date-divider::before,
-.msg-date-divider::after { content:''; flex:1; height:1px; background:#e2e8f0; }
-.msg-date-divider span {
-    background: #e8edf3; padding: .15rem .65rem;
-    border-radius: 999px; font-weight: 600; white-space: nowrap;
-}
+.msg-date-divider::before, .msg-date-divider::after { content:''; flex:1; height:1px; background:#e2e8f0; }
+.msg-date-divider span { background: #e8edf3; padding: .12rem .6rem; border-radius: 999px; font-weight: 600; white-space: nowrap; }
 
-/* ── Message rows ── */
-.msg-row { display:flex; align-items:flex-end; gap:.4rem; position: relative; }
-.msg-row.mine { flex-direction: row-reverse; }
+/* Message rows */
+.message-wrap { display: flex; align-items: flex-end; gap: .5rem; }
+.message-wrap.sent { flex-direction: row-reverse; }
 
 .msg-avatar {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: linear-gradient(135deg,#e2e8f0,#cbd5e1);
-    display: flex; align-items: center; justify-content: center;
-    font-size: .82rem; flex-shrink: 0; overflow: hidden;
-    box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    width: 32px; height: 32px; border-radius: 50%;
+    overflow: hidden; flex-shrink: 0;
+    border: 2px solid #e8edf3;
+    background: #e2e8f0; align-self: flex-end;
+    display: flex; align-items: center; justify-content: center; font-size: .85rem;
 }
-.msg-avatar img { width: 30px; height: 30px; object-fit: cover; border-radius: 50%; }
+.msg-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-.msg-col {
-    max-width: 68%;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-.msg-row.mine .msg-col {
-    align-items: flex-end;
-}
+.message-bubble-group { display: flex; flex-direction: column; max-width: 68%; }
+.message-wrap.sent .message-bubble-group { align-items: flex-end; }
 
-.msg-bubble {
-    min-width: 60px;
-    width: fit-content;
-    max-width: 100%;
-    padding: .55rem .85rem;
+.msg-sender-row { margin-bottom: .18rem; }
+.msg-sender-name { font-size: .7rem; font-weight: 700; color: #1a56db; }
+.message-wrap.sent .msg-sender-row { display: none; }
+
+/* Bubble */
+.message-bubble { width: 100%; }
+.msg-content {
+    padding: .6rem .95rem;
     border-radius: 18px;
-    font-size: .875rem;
-    line-height: 1.55;
+    font-size: .875rem; line-height: 1.55;
     word-break: break-word;
-    position: relative;
-    box-shadow: 0 1px 3px rgba(0,0,0,.07);
 }
-.msg-row:not(.mine) .msg-bubble {
-    background: #fff;
-    border: 1px solid #e8edf3;
-    border-bottom-left-radius: 5px;
-    color: #1e293b;
+.message-wrap.received .msg-content {
+    background: #fff; border: 1px solid #e8edf3;
+    border-bottom-left-radius: 4px; color: #1e293b;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
-.msg-row.mine .msg-bubble {
-    background: linear-gradient(135deg,#1a56db,#2563eb);
-    color: #fff;
-    border-bottom-right-radius: 5px;
+.message-wrap.sent .msg-content {
+    background: linear-gradient(135deg,#1a56db,#2563eb); color: #fff;
+    border-bottom-right-radius: 4px;
     box-shadow: 0 2px 8px rgba(26,86,219,.22);
 }
-/* Deleted message style */
-.msg-bubble.deleted {
-    background: #f1f5f9 !important;
-    color: #94a3b8 !important;
+
+/* Deleted */
+.msg-deleted .msg-content,
+.msg-unsent-text {
     font-style: italic;
-    border: 1px dashed #cbd5e1 !important;
+    color: #94a3b8 !important;
+    background: #f8fafc !important;
+    border: 1px dashed #e2e8f0 !important;
     box-shadow: none !important;
 }
-.msg-row.mine .msg-bubble.deleted {
-    background: rgba(255,255,255,.18) !important;
-    color: rgba(255,255,255,.6) !important;
-    border: 1px dashed rgba(255,255,255,.35) !important;
-}
-.msg-time {
-    font-size: .65rem; color: #94a3b8;
-    margin-top: .25rem; display: block; text-align: right;
-}
-.msg-row.mine .msg-time { color: rgba(255,255,255,.6); }
-.msg-sender-name { font-size: .68rem; font-weight: 700; color: #3b82f6; margin-bottom: .12rem; padding-left: .1rem; }
+.msg-unsent-text i { margin-right: .3rem; opacity: .6; }
 
-/* Image in bubble */
-.msg-img {
+/* Footer (time + status) */
+.msg-footer { display: flex; align-items: center; gap: .3rem; margin-top: .22rem; }
+.message-wrap.sent     .msg-footer { justify-content: flex-end; }
+.message-wrap.received .msg-footer { justify-content: flex-start; }
+.msg-time { font-size: .65rem; color: #94a3b8; }
+
+/* Status ticks */
+.msg-status { display: inline-flex; align-items: center; gap: 0; line-height: 1; }
+.msg-status .tick-1,
+.msg-status .tick-2 { font-size: .68rem; display: inline-block; }
+.msg-status[data-status="sending"] .tick-1 { color: rgba(255,255,255,.5); }
+.msg-status[data-status="sending"] .tick-2 { display: none; }
+.msg-status[data-status="sent"]    .tick-1 { color: rgba(255,255,255,.7); }
+.msg-status[data-status="sent"]    .tick-2 { display: none; }
+.msg-status[data-status="seen"] .tick-1,
+.msg-status[data-status="seen"] .tick-2 { display: none; }
+.msg-seen-avatar {
+    width: 15px; height: 15px; border-radius: 50%;
+    overflow: hidden; border: 1.5px solid #3b82f6;
+    flex-shrink: 0; display: inline-block; vertical-align: middle;
+}
+.msg-seen-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Image attachment */
+.msg-attachment-img { margin-bottom: .35rem; }
+.msg-attachment-img img {
     max-width: 220px; max-height: 220px;
-    border-radius: 12px; display: block; cursor: pointer;
-    transition: opacity .15s;
-}
-.msg-img:hover { opacity: .9; }
-
-/* ── Delete button ── */
-.msg-delete-btn {
-    display: none;
-    align-items: center; justify-content: center;
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    background: #fff;
-    border: 1px solid #fca5a5;
-    color: #ef4444;
-    cursor: pointer;
-    font-size: .7rem;
-    flex-shrink: 0;
-    transition: all .15s;
-    box-shadow: 0 1px 4px rgba(0,0,0,.1);
-    align-self: center;
-    margin-bottom: 4px;
-}
-.msg-delete-btn:hover {
-    background: #fef2f2;
-    border-color: #ef4444;
-    transform: scale(1.1);
-}
-.msg-row.mine:hover .msg-delete-btn { display: flex; }
-
-/* Delete confirm overlay on bubble */
-.msg-delete-confirm {
-    display: none;
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: rgba(239,68,68,.92);
-    color: #fff;
-    align-items: center;
-    justify-content: center;
-    gap: .4rem;
-    font-size: .75rem;
-    font-weight: 700;
-    backdrop-filter: blur(2px);
-    z-index: 5;
-    border-radius: 18px;
-}
-.msg-delete-confirm.active { display: flex; }
-.msg-delete-confirm button {
-    padding: .2rem .55rem;
-    border-radius: 6px;
-    border: none; cursor: pointer; font-size: .72rem; font-weight: 700;
-    transition: all .12s;
-}
-.msg-confirm-yes { background: #fff; color: #dc2626; }
-.msg-confirm-yes:hover { background: #fef2f2; }
-.msg-confirm-no  { background: rgba(255,255,255,.25); color: #fff; border: 1px solid rgba(255,255,255,.5)!important; }
-.msg-confirm-no:hover { background: rgba(255,255,255,.4); }
-
-/* Deleting spinner on the bubble */
-.msg-deleting::after {
-    content: '';
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    background: rgba(0,0,0,.25);
-    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px; object-fit: cover;
+    display: block; cursor: pointer; border: 1px solid rgba(0,0,0,.08);
 }
 
-/* ── Input area ── */
+/* Typing indicator */
+.typing-indicator-wrap { display: flex; align-items: flex-end; gap: .5rem; padding: 4px 1rem 8px; }
+.typing-bubble {
+    display: flex; align-items: center; gap: 5px;
+    background: #fff; border: 1px solid #e8edf3;
+    border-radius: 18px 18px 18px 4px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.typing-dot { width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; animation: typingBounce 1.2s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingBounce {
+    0%,60%,100% { transform: translateY(0); background: #94a3b8; }
+    30% { transform: translateY(-5px); background: #1a56db; }
+}
+
+/* File preview bar */
+#file-preview-bar { padding: .5rem 1.1rem; background: #fff; border-top: 1px solid #e8edf3; display: flex; align-items: center; }
+.file-preview-inner { display: flex; align-items: center; gap: .75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: .5rem .75rem; flex: 1; }
+.file-preview-img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; }
+.file-preview-name { font-size: .82rem; color: #1e293b; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-preview-clear { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1rem; padding: .25rem; border-radius: 4px; transition: color .2s; margin-left: auto; }
+.file-preview-clear:hover { color: #ef4444; }
+
+/* Input area */
 .chat-input-area {
-    background: #fff;
+    padding: .8rem 1rem; background: #fff;
     border-top: 1px solid #e8edf3;
-    box-shadow: 0 -4px 20px rgba(0,0,0,.07);
     flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: env(safe-area-inset-bottom, .8rem);
 }
-
-/* Image preview strip */
-.img-preview-strip {
-    display: none;
-    align-items: center;
-    gap: .75rem;
-    padding: .65rem 1rem .5rem;
-    border-bottom: 1px solid #f0f4f8;
-    background: #f8fafc;
-    animation: slideDown .15s ease;
-}
-.img-preview-strip.visible { display: flex; }
-@keyframes slideDown {
-    from { opacity:0; transform: translateY(-6px); }
-    to   { opacity:1; transform: translateY(0); }
-}
-.img-preview-thumb { position: relative; display: inline-flex; flex-shrink: 0; }
-.img-preview-thumb img {
-    width: 64px; height: 64px; object-fit: cover;
-    border-radius: 10px; border: 2px solid #e2e8f0;
-    box-shadow: 0 2px 8px rgba(0,0,0,.1);
-}
-.img-preview-remove {
-    position: absolute; top: -7px; right: -7px;
-    width: 20px; height: 20px; border-radius: 50%;
-    background: #ef4444; color: #fff; border: 2px solid #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .6rem; cursor: pointer; font-weight: 800;
-    box-shadow: 0 1px 4px rgba(0,0,0,.2);
-    line-height: 1; transition: background .12s;
-}
-.img-preview-remove:hover { background: #dc2626; }
-.img-preview-info { display:flex; flex-direction:column; gap:.1rem; }
-.img-preview-label { font-size: .78rem; color: #374151; font-weight: 700; }
-.img-preview-name { font-size: .72rem; color: #94a3b8; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.img-preview-hint { font-size: .7rem; color: #94a3b8; font-style: italic; }
-
-/* Sending indicator */
-.sending-indicator {
-    display: none; align-items: center; gap: .3rem;
-    font-size: .72rem; color: #94a3b8; padding: 0 1.1rem .3rem;
-}
-.sending-indicator.visible { display: flex; }
-.dot-bounce {
-    width: 5px; height: 5px; border-radius: 50%; background: #94a3b8;
-    animation: bounce .9s infinite;
-}
-.dot-bounce:nth-child(2) { animation-delay: .15s; }
-.dot-bounce:nth-child(3) { animation-delay: .3s; }
-@keyframes bounce {
-    0%,60%,100% { transform: translateY(0); }
-    30% { transform: translateY(-5px); }
-}
-
-/* Input bar */
-.chat-input-bar {
-    display: flex; align-items: flex-end; gap: .55rem;
-    padding: .7rem .9rem .75rem;
-}
-.chat-attach-btn {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: #f1f5f9; border: 1.5px solid #e2e8f0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; cursor: pointer; flex-shrink: 0;
-    transition: all .15s; color: #64748b;
-}
-.chat-attach-btn:hover { background: #e2e8f0; border-color: #cbd5e1; color: #1a56db; transform: scale(1.07); }
 .chat-input-wrap {
-    flex: 1; position: relative;
+    display: flex; align-items: flex-end; gap: .55rem;
     background: #f8fafc; border: 1.5px solid #e2e8f0;
-    border-radius: 22px; display: flex; align-items: flex-end;
+    border-radius: 22px; padding: .45rem .45rem .45rem .9rem;
     transition: border-color .15s, box-shadow .15s;
 }
-.chat-input-wrap:focus-within {
-    border-color: #1a56db;
-    box-shadow: 0 0 0 3px rgba(26,86,219,.1);
-    background: #fff;
+.chat-input-wrap:focus-within { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,.1); background: #fff; }
+#msg-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: #1e293b; resize: none; font-size: .88rem;
+    line-height: 1.5; max-height: 120px; overflow-y: auto;
+    padding: .25rem 0; font-family: inherit;
 }
-.chat-input {
-    flex: 1; border: none; outline: none;
-    background: transparent; resize: none;
-    padding: .6rem 1rem; font-size: .88rem;
-    max-height: 120px; min-height: 40px;
-    line-height: 1.5; font-family: inherit;
-    overflow-y: auto; color: #1e293b;
-}
-.chat-input::placeholder { color: #94a3b8; }
-.send-btn {
-    width: 40px; height: 40px; border-radius: 50%;
+#msg-input::placeholder { color: #94a3b8; }
+.btn-send {
+    width: 38px; height: 38px;
     background: linear-gradient(135deg,#1a56db,#2563eb);
-    border: none; cursor: pointer;
+    border: none; border-radius: 50%; color: #fff; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: .95rem; flex-shrink: 0; transition: all .15s;
+    font-size: .9rem; transition: all .15s; flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(26,86,219,.3);
 }
-.send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(26,86,219,.4); }
-.send-btn:disabled { background: linear-gradient(135deg,#94a3b8,#b2bec8); box-shadow: none; transform: none; cursor: default; }
-.send-btn svg { width: 18px; height: 18px; fill: #fff; margin-left: 2px; }
+.btn-send:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(26,86,219,.4); }
+.btn-attach {
+    background: none; border: none; color: #94a3b8; cursor: pointer;
+    padding: .4rem; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; transition: color .2s; flex-shrink: 0;
+}
+.btn-attach:hover { color: #1a56db; }
 
 /* Empty state */
-.empty-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; color: #94a3b8; }
+.empty-chat { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .6rem; color: #94a3b8; }
 .empty-chat .icon { font-size: 3rem; }
 .empty-chat p { font-size: .87rem; margin: 0; }
 
-/* ── Skeleton ── */
-@keyframes skeleton-shimmer {
-    0%   { background-position: -600px 0; }
-    100% { background-position:  600px 0; }
+/* ══════════════════════════════════════════════════════════
+   CONTEXT MENU
+   ══════════════════════════════════════════════════════════ */
+#msg-context-menu {
+    position: fixed; z-index: 9999;
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    padding: 5px; min-width: 160px;
+    display: none; animation: ctx-pop .12s ease;
 }
-.skeleton {
-    background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);
-    background-size: 600px 100%;
-    animation: skeleton-shimmer 1.4s infinite linear;
-    border-radius: 8px;
+@keyframes ctx-pop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+#msg-context-menu button {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; background: none; border: none;
+    padding: 9px 12px; border-radius: 7px;
+    font-size: .85rem; cursor: pointer; color: #1e293b;
+    text-align: left; transition: background .12s;
 }
-.chat-messages-skeleton {
-    flex: 1; overflow: hidden; padding: 1rem;
-    background: #f0f4f8; display: flex;
-    flex-direction: column; gap: .7rem; min-height: 0;
-}
-.skel-msg-row { display:flex; align-items:flex-end; gap:.45rem; }
-.skel-msg-row.mine { flex-direction: row-reverse; }
-.skel-avatar { width:30px; height:30px; border-radius:50%; flex-shrink:0; }
-.skel-bubble-wrap { display:flex; flex-direction:column; gap:.2rem; }
-.skel-bubble { height:36px; border-radius:18px; }
-.skel-time { height:9px; width:38px; border-radius:4px; align-self:flex-end; }
+#msg-context-menu button:hover { background: #f8fafc; }
+#msg-context-menu button.danger { color: #ef4444; }
+#msg-context-menu button.danger:hover { background: rgba(239,68,68,.08); }
+#msg-context-menu .ctx-divider { height: 1px; background: #e8edf3; margin: 4px 0; }
 
-/* ── Image lightbox ── */
+/* ══════════════════════════════════════════════════════════
+   LIGHTBOX
+   ══════════════════════════════════════════════════════════ */
 #imgLightbox {
     display:none; position:fixed; inset:0; z-index:9999;
     background:rgba(0,0,0,.85); align-items:center; justify-content:center;
-    cursor:zoom-out; backdrop-filter: blur(4px);
+    cursor:zoom-out; backdrop-filter:blur(4px);
 }
 #imgLightbox.open { display:flex; }
 #imgLightbox img { max-width:92vw; max-height:90vh; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.4); }
@@ -403,473 +335,547 @@ body.layout-admin .chat-page-wrapper {
     background:rgba(255,255,255,.15); border:none; color:#fff;
     width:38px; height:38px; border-radius:50%; cursor:pointer;
     font-size:1.1rem; display:flex; align-items:center; justify-content:center;
-    backdrop-filter: blur(4px); transition: background .15s;
+    backdrop-filter:blur(4px);
 }
 #imgLightbox .lb-close:hover { background:rgba(255,255,255,.3); }
 
-/* ── Responsive ── */
-@media (max-width: 640px) {
-    .chat-header { padding: .65rem .8rem; gap: .6rem; }
-    .chat-header-avatar { width: 38px; height: 38px; }
-    .chat-header-name { font-size: .88rem; }
-    .chat-messages { padding: .85rem .75rem; }
-    .msg-bubble { min-width: 60px; font-size: .84rem; }
-    .msg-col { max-width: 80%; }
-    .chat-input-bar { padding: .6rem .7rem .65rem; }
-    .msg-img { max-width: 190px; max-height: 190px; }
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE — Full-screen mobile
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .chat-layout {
+        grid-template-columns: 1fr;
+        height: calc(100vh - var(--navbar-height, 60px));
+        height: calc(100dvh - var(--navbar-height, 60px));
+        display: flex; flex-direction: column;
+    }
+    .chat-sidebar { display: none; }
+    .chat-back-btn { display: flex; }
+    .chat-main { flex: 1; min-height: 0; }
+    .message-bubble-group { max-width: 80%; }
+    .msg-content { font-size: .85rem; padding: .55rem .85rem; }
+    .msg-avatar { width: 28px; height: 28px; }
+    .messages-container { padding: .75rem .65rem; gap: .45rem; }
+}
+@media (max-width: 380px) {
+    .message-bubble-group { max-width: 86%; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="chat-page-wrapper">
-<div class="chat-wrap">
+<div class="chat-layout">
 
-    <!-- ── Header ── -->
-    <div class="chat-header">
-        <a href="{{ url_for('chat.inbox') }}" class="chat-back-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            Back
-        </a>
-        <div class="chat-header-avatar">
-            {% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
-                <img src="{% if other_user.profile_picture.startswith('data:') %}{{ other_user.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ other_user.profile_picture) }}{% endif %}"
-                     alt="{{ other_user.full_name }}" />
+  <!-- ══ Sidebar ══ -->
+  <div class="chat-sidebar">
+    <div class="chat-sidebar-header">
+      <h3>💬 Messages</h3>
+      <a href="{{ url_for('chat.inbox') }}">All chats</a>
+    </div>
+    <div class="conversation-list">
+      {% set sidebar_convs = [] %}
+      {% for c in (conversations if conversations is defined else []) %}
+        {% set other_id = c.user2_id if c.user1_id == current_user_id else c.user1_id %}
+        <a href="{{ url_for('chat.conversation', conv_id=c.id) }}"
+           class="conv-item {% if c.id == conv.id %}active{% endif %}">
+          <div class="conv-avatar">
+            {% if c.other_pic and c.other_pic_status == 'approved' %}
+              <img src="{{ url_for('static', filename='uploads/profiles/' ~ c.other_pic) }}" alt="" />
             {% else %}
-                {% if other_user.role == 'admin' %}🛡️{% else %}👤{% endif %}
+              {% if c.other_role == 'admin' %}🛡️{% else %}👤{% endif %}
             {% endif %}
-        </div>
-        <div class="chat-header-info">
-            <div class="chat-header-name">
-                {{ other_user.full_name }}
-                {% if other_user.role == 'admin' %}
-                    <span class="admin-badge">Admin</span>
-                {% endif %}
+          </div>
+          <div class="conv-info">
+            <div class="conv-name-row">
+              <span class="conv-name">{{ c.other_name }}</span>
+              <span class="conv-time">{{ c.last_message_at[:10] if c.last_message_at else '' }}</span>
             </div>
-            <div class="chat-header-sub">
-                {% if conv.item_id %}📦 Re: item #{{ conv.item_id }}{% else %}Direct message{% endif %}
-            </div>
-        </div>
+            <div class="conv-preview">{{ c.last_message[:36] ~ '…' if c.last_message and c.last_message|length > 36 else (c.last_message or 'No messages yet') }}</div>
+          </div>
+          {% if c.unread_count %}
+          <span class="conv-unread-badge">{{ c.unread_count }}</span>
+          {% endif %}
+        </a>
+      {% else %}
+        <div style="padding:2rem 1rem;text-align:center;color:#94a3b8;font-size:.85rem;">No conversations yet</div>
+      {% endfor %}
     </div>
+  </div>
 
-    <!-- Status bar -->
-    <div class="chat-status" id="chatStatus"></div>
+  <!-- ══ Chat Main ══ -->
+  <div class="chat-main">
 
-    <!-- ── Skeleton ── -->
-    <div class="chat-messages-skeleton" id="msgSkeleton" aria-hidden="true">
-        <div class="skel-msg-row">
-            <div class="skeleton skel-avatar"></div>
-            <div class="skel-bubble-wrap">
-                <div class="skeleton skel-bubble" style="width:180px;"></div>
-                <div class="skeleton skel-time"></div>
-            </div>
-        </div>
-        <div class="skel-msg-row mine">
-            <div class="skel-bubble-wrap">
-                <div class="skeleton skel-bubble" style="width:220px;"></div>
-                <div class="skeleton skel-time"></div>
-            </div>
-        </div>
-        <div class="skel-msg-row">
-            <div class="skeleton skel-avatar"></div>
-            <div class="skel-bubble-wrap">
-                <div class="skeleton skel-bubble" style="width:260px;height:54px;"></div>
-                <div class="skeleton skel-time"></div>
-            </div>
-        </div>
-        <div class="skel-msg-row mine">
-            <div class="skel-bubble-wrap">
-                <div class="skeleton skel-bubble" style="width:140px;"></div>
-                <div class="skeleton skel-time"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Messages ── -->
-    <div class="chat-messages" id="msgContainer" style="display:none;">
-        {% if not messages %}
-        <div class="empty-chat">
-            <div class="icon">💬</div>
-            <p>No messages yet. Say hello!</p>
-        </div>
+    <!-- Header -->
+    <div class="chat-header">
+      <a href="{{ url_for('chat.inbox') }}" class="chat-back-btn">‹</a>
+      <div class="chat-header-avatar">
+        {% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
+          <img src="{% if other_user.profile_picture.startswith('data:') %}{{ other_user.profile_picture }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ other_user.profile_picture) }}{% endif %}" alt="{{ other_user.full_name }}" />
         {% else %}
+          {% if other_user.role == 'admin' %}🛡️{% else %}👤{% endif %}
+        {% endif %}
+      </div>
+      <div class="chat-header-info">
+        <div class="chat-user-name">
+          {{ other_user.full_name }}
+          {% if other_user.role == 'admin' %}<span class="admin-badge">Admin</span>{% endif %}
+        </div>
+        <div class="chat-user-status">
+          <span class="status-dot" id="headerOnlineDot"></span>
+          <span id="headerOnlineLabel">Checking…</span>
+        </div>
+      </div>
+      {% if conv.item_id %}
+      <span class="chat-item-ref-badge">📦 Item #{{ conv.item_id }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Messages -->
+    <div class="messages-container" id="messages-container">
+      {% if not messages %}
+        <div class="empty-chat">
+          <div class="icon">💬</div>
+          <p>No messages yet. Say hello!</p>
+        </div>
+      {% else %}
         {% set ns = namespace(last_date='') %}
         {% for msg in messages %}
-            {% set msg_date = msg.created_at[:10] if msg.created_at else '' %}
-            {% if msg_date != ns.last_date %}
-            <div class="msg-date-divider"><span>{{ msg_date }}</span></div>
-            {% set ns.last_date = msg_date %}
+          {% set msg_date = msg.created_at[:10] if msg.created_at else '' %}
+          {% if msg_date != ns.last_date %}
+          <div class="msg-date-divider"><span>{{ msg_date }}</span></div>
+          {% set ns.last_date = msg_date %}
+          {% endif %}
+          {% set is_mine = msg.sender_id == current_user_id %}
+          {% set is_deleted = msg.is_deleted %}
+
+          <div class="message-wrap {% if is_mine %}sent{% else %}received{% endif %}"
+               data-id="{{ msg.id }}"
+               {% if is_mine and not is_deleted %}data-unsendable="1"{% endif %}>
+
+            {% if not is_mine %}
+            <div class="msg-avatar">
+              {% if msg.sender_pic and msg.sender_pic_status == 'approved' %}
+                <img src="{% if msg.sender_pic.startswith('data:') %}{{ msg.sender_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ msg.sender_pic) }}{% endif %}" />
+              {% else %}
+                {% if msg.sender_role == 'admin' %}🛡️{% else %}👤{% endif %}
+              {% endif %}
+            </div>
             {% endif %}
-            {% set is_mine = msg.sender_id == current_user_id %}
-            {% set is_deleted = msg.is_deleted %}
-            <div class="msg-row {{ 'mine' if is_mine else '' }}" data-msg-id="{{ msg.id }}">
-                {% if not is_mine %}
-                <div class="msg-avatar">
-                    {% if msg.sender_pic and msg.sender_pic_status == 'approved' %}
-                        <img src="{% if msg.sender_pic.startswith('data:') %}{{ msg.sender_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ msg.sender_pic) }}{% endif %}" />
-                    {% else %}
-                        {% if msg.sender_role == 'admin' %}🛡️{% else %}👤{% endif %}
-                    {% endif %}
-                </div>
+
+            <div class="message-bubble-group">
+              {% if not is_mine %}
+              <div class="msg-sender-row">
+                <span class="msg-sender-name">{{ msg.sender_name.split()[0] }}</span>
+              </div>
+              {% endif %}
+
+              <div class="message-bubble{% if is_deleted %} msg-deleted{% endif %}">
+                {% if is_deleted %}
+                  <div class="msg-content msg-unsent-text">
+                    <i class="fa fa-ban"></i>
+                    {% if is_mine %}You deleted this message.{% else %}This message was deleted.{% endif %}
+                  </div>
+                {% else %}
+                  {% if msg.image_filename %}
+                  <div class="msg-attachment-img">
+                    <img src="{{ url_for('static', filename='uploads/chat/' ~ msg.image_filename) }}"
+                         alt="image" onclick="openLightbox(this.src)" />
+                  </div>
+                  {% endif %}
+                  {% if msg.content %}
+                  <div class="msg-content">{{ msg.content }}</div>
+                  {% endif %}
                 {% endif %}
 
-                <!-- Delete button (mine only, not deleted) -->
-                {% if is_mine and not is_deleted %}
-                <button class="msg-delete-btn" title="Delete message" onclick="startDelete(this, {{ msg.id }})">🗑</button>
-                {% endif %}
-
-                <div class="msg-col">
-                    {% if not is_mine %}
-                    <div class="msg-sender-name">{{ msg.sender_name.split()[0] }}</div>
-                    {% endif %}
-                    <div class="msg-bubble {% if is_deleted %}deleted{% endif %}" id="bubble-{{ msg.id }}">
-                        <!-- Delete confirm overlay -->
-                        {% if is_mine and not is_deleted %}
-                        <div class="msg-delete-confirm" id="confirm-{{ msg.id }}">
-                            <span>Delete?</span>
-                            <button class="msg-confirm-yes" onclick="confirmDelete({{ msg.id }})">Yes</button>
-                            <button class="msg-confirm-no"  onclick="cancelDelete({{ msg.id }})">No</button>
-                        </div>
-                        {% endif %}
-
-                        {% if is_deleted %}
-                            <span style="font-size:.82rem;">🚫 Message deleted</span>
-                        {% else %}
-                            {% if msg.image_filename %}
-                            <img class="msg-img"
-                                 src="{{ url_for('static', filename='uploads/chat/' ~ msg.image_filename) }}"
-                                 alt="image" onclick="openLightbox(this.src)"
-                                 {% if msg.content %}style="margin-bottom:.4rem;"{% endif %} />
-                            {% endif %}
-                            {% if msg.content %}<span class="msg-content">{{ msg.content }}</span>{% endif %}
-                        {% endif %}
-                        <span class="msg-time">{{ msg.created_at[11:16] if msg.created_at else '' }}</span>
-                    </div>
+                <div class="msg-footer">
+                  <span class="msg-time">{{ msg.created_at[11:16] if msg.created_at else '' }}</span>
+                  {% if is_mine and not is_deleted %}
+                  <span class="msg-status" data-status="sent" title="Sent" data-msg-id="{{ msg.id }}">
+                    <i class="fa fa-check tick-1"></i>
+                    <i class="fa fa-check tick-2"></i>
+                  </span>
+                  {% endif %}
                 </div>
+              </div>
             </div>
+          </div>
         {% endfor %}
-        {% endif %}
+      {% endif %}
     </div>
 
-    <!-- ── Input area ── -->
+    <!-- Typing indicator -->
+    <div id="typing-indicator" style="display:none;" class="typing-indicator-wrap">
+      <div class="msg-avatar"><img src="" id="typing-avatar" alt="" /></div>
+      <div class="typing-bubble">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+    </div>
+
+    <!-- File preview -->
+    <div id="file-preview-bar" style="display:none;">
+      <div class="file-preview-inner">
+        <div id="file-preview-content"></div>
+        <button onclick="clearAttachment()" class="file-preview-clear" title="Remove">✕</button>
+      </div>
+    </div>
+
+    <!-- Input -->
     <div class="chat-input-area">
-        <div class="img-preview-strip" id="imgPreviewStrip">
-            <div class="img-preview-thumb">
-                <img id="imgPreviewThumb" src="" alt="preview" />
-                <div class="img-preview-remove" onclick="removeImage()" title="Remove image">✕</div>
-            </div>
-            <div class="img-preview-info">
-                <div class="img-preview-label">📎 Image attached</div>
-                <div class="img-preview-name" id="imgPreviewName"></div>
-                <div class="img-preview-hint">Type a caption below (optional)</div>
-            </div>
-        </div>
-
-        <div class="sending-indicator" id="sendingIndicator">
-            <div class="dot-bounce"></div>
-            <div class="dot-bounce"></div>
-            <div class="dot-bounce"></div>
-            <span>Sending…</span>
-        </div>
-
-        <div class="chat-input-bar">
-            <input type="file" id="imgInput" accept="image/*" capture="environment" style="display:none;">
-            <button class="chat-attach-btn" id="attachBtn" onclick="document.getElementById('imgInput').click()" title="Attach image">📎</button>
-            <div class="chat-input-wrap">
-                <textarea id="msgInput" class="chat-input" rows="1"
-                          placeholder="Type a message…" maxlength="1000"></textarea>
-            </div>
-            <button class="send-btn" id="sendBtn" title="Send">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-            </button>
-        </div>
+      <div class="chat-input-wrap">
+        <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(this)" />
+        <button class="btn-attach" onclick="document.getElementById('file-input').click()" title="Attach image">📎</button>
+        <textarea id="msg-input" placeholder="Type a message…" rows="1" maxlength="1000"
+          onkeydown="handleKey(event)" oninput="onTyping()"></textarea>
+        <button onclick="sendMessage()" class="btn-send" id="send-btn" title="Send">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
     </div>
-</div>
+
+  </div><!-- /chat-main -->
+</div><!-- /chat-layout -->
+
+<!-- Context menu -->
+<div id="msg-context-menu" role="menu">
+  <button id="ctx-copy" onclick="ctxCopy()">📋 Copy text</button>
+  <div class="ctx-divider"></div>
+  <button id="ctx-unsend" class="danger" onclick="ctxUnsend()" style="display:none">🗑 Delete message</button>
 </div>
 
-<!-- ── Image Lightbox ── -->
+<!-- Lightbox -->
 <div id="imgLightbox" onclick="closeLightbox()">
-    <button class="lb-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
-    <img id="lightboxImg" src="" alt="full image" onclick="event.stopPropagation()" />
+  <button class="lb-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="full image" onclick="event.stopPropagation()" />
 </div>
 
 <script>
-const CONV_ID      = {{ conv.id }};
-const CURRENT_UID  = {{ current_user_id }};
-const SEND_URL     = "{{ url_for('chat.send', conv_id=conv.id) }}";
-const POLL_URL     = "{{ url_for('chat.poll', conv_id=conv.id) }}";
-const DELETE_BASE  = "/chat/{{ conv.id }}/delete/";
-const PROFILE_BASE = "{{ url_for('static', filename='uploads/profiles/') }}";
-const CHAT_BASE    = "{{ url_for('static', filename='uploads/chat/') }}";
+const CONV_ID       = {{ conv.id }};
+const CURRENT_UID   = {{ current_user_id }};
+const OTHER_UID     = {{ other_user.id }};
+const SEND_URL      = "{{ url_for('chat.send', conv_id=conv.id) }}";
+const POLL_URL      = "{{ url_for('chat.poll', conv_id=conv.id) }}";
+const UNSEND_BASE   = "/chat/{{ conv.id }}/delete/";
+const PROFILE_BASE  = "{{ url_for('static', filename='uploads/profiles/') }}";
+const CHAT_BASE     = "{{ url_for('static', filename='uploads/chat/') }}";
 
-let lastMsgId = 0;
-document.querySelectorAll('.msg-row[data-msg-id]').forEach(el => {
-    const id = parseInt(el.dataset.msgId);
-    if (id > lastMsgId) lastMsgId = id;
+{% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
+  {% if other_user.profile_picture.startswith('data:') %}
+const OTHER_AVATAR = '{{ other_user.profile_picture }}';
+  {% else %}
+const OTHER_AVATAR = '{{ url_for("static", filename="uploads/profiles/" ~ other_user.profile_picture) }}';
+  {% endif %}
+{% else %}
+const OTHER_AVATAR = '';
+{% endif %}
+
+const SEEN_AVATAR_HTML = OTHER_AVATAR
+  ? `<span class="msg-seen-avatar"><img src="${OTHER_AVATAR}" alt="Seen" /></span>`
+  : '';
+
+let lastMsgId   = 0;
+let pollTimer   = null;
+let isSending   = false;
+let isTyping    = false;
+let typingTimer = null;
+let selectedFile = null;
+
+// Init lastMsgId
+document.querySelectorAll('.message-wrap[data-id]').forEach(el => {
+  const id = parseInt(el.dataset.id, 10);
+  if (id > lastMsgId) lastMsgId = id;
 });
 
-const container        = document.getElementById('msgContainer');
-const skeleton         = document.getElementById('msgSkeleton');
-const input            = document.getElementById('msgInput');
-const sendBtn          = document.getElementById('sendBtn');
-const statusBar        = document.getElementById('chatStatus');
-const imgInput         = document.getElementById('imgInput');
-const imgPreviewStrip  = document.getElementById('imgPreviewStrip');
-const imgPreviewThumb  = document.getElementById('imgPreviewThumb');
-const imgPreviewName   = document.getElementById('imgPreviewName');
-const sendingIndicator = document.getElementById('sendingIndicator');
-
-// ── Skeleton reveal ──────────────────────────────────────────────────────────
-(function () {
-    var start = Date.now();
-    function reveal() {
-        var remaining = Math.max(0, 500 - (Date.now() - start));
-        setTimeout(function () {
-            if (skeleton)  skeleton.style.display = 'none';
-            if (container) {
-                container.style.display = '';
-                scrollToBottom(false);
-            }
-            input.focus();
-        }, remaining);
-    }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', reveal);
-    else reveal();
-})();
-
+// ── Scroll ──
+const msgContainer = document.getElementById('messages-container');
 function scrollToBottom(smooth) {
-    container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+  msgContainer.scrollTo({ top: msgContainer.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+}
+scrollToBottom(false);
+
+// ── Status helpers ──
+function setStatusEl(el, status) {
+  const order = ['sending','sent','delivered','seen'];
+  if (order.indexOf(status) <= order.indexOf(el.dataset.status || 'sending')) return;
+  el.dataset.status = status;
+  el.title = status.charAt(0).toUpperCase() + status.slice(1);
+  const existing = el.querySelector('.msg-seen-avatar');
+  if (status === 'seen') { if (!existing && SEEN_AVATAR_HTML) el.insertAdjacentHTML('beforeend', SEEN_AVATAR_HTML); }
+  else { if (existing) existing.remove(); }
 }
 
-// ── Auto-resize textarea ──────────────────────────────────────────────────────
-input.addEventListener('input', () => {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-});
+// ── Polling ──
+async function poll() {
+  if (document.hidden) return;
+  try {
+    const res  = await fetch(`${POLL_URL}?since=${lastMsgId}`);
+    if (!res.ok) return;
+    const data = await res.json();
 
-input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
+    // Online status
+    const dot   = document.getElementById('headerOnlineDot');
+    const label = document.getElementById('headerOnlineLabel');
+    if (data.other_online) {
+      dot && dot.classList.add('online');
+      if (label) { label.textContent = 'Active now'; label.style.color = '#22c55e'; }
+    } else {
+      dot && dot.classList.remove('online');
+      if (label) { label.textContent = 'Offline'; label.style.color = ''; }
     }
-});
-sendBtn.addEventListener('click', sendMessage);
 
-// ── Image picker ──────────────────────────────────────────────────────────────
-imgInput.addEventListener('change', () => {
-    const file = imgInput.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        imgPreviewThumb.src = e.target.result;
-        imgPreviewName.textContent = file.name;
-        imgPreviewStrip.classList.add('visible');
-        input.placeholder = 'Add a caption… (optional)';
-        input.focus();
-    };
-    reader.readAsDataURL(file);
-});
+    // Typing
+    data.other_typing ? showTyping() : hideTyping();
 
-function removeImage() {
-    imgInput.value = '';
-    imgPreviewStrip.classList.remove('visible');
-    imgPreviewThumb.src = '';
-    imgPreviewName.textContent = '';
-    input.placeholder = 'Type a message…';
+    // New messages
+    if (data.messages && data.messages.length) {
+      data.messages.forEach(msg => {
+        if (msg.id > lastMsgId) lastMsgId = msg.id;
+        if (msg.is_deleted) { handleUnsent(msg.id); return; }
+        if (msg.sender_id === CURRENT_UID) return; // skip own (optimistic)
+        appendMessage(msg, 'received');
+      });
+    }
+
+    // Mark seen
+    if (data.seen_ids && data.seen_ids.length) {
+      data.seen_ids.forEach(id => {
+        const el = document.querySelector(`.msg-status[data-msg-id="${id}"]`);
+        if (el) setStatusEl(el, 'seen');
+      });
+    }
+  } catch(e) {}
 }
 
-// ── Send ──────────────────────────────────────────────────────────────────────
+function startPolling() { if (!pollTimer) { poll(); pollTimer = setInterval(poll, 2500); } }
+function stopPolling()  { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+document.addEventListener('visibilitychange', () => document.hidden ? stopPolling() : startPolling());
+
+// ── Typing ──
+function onTyping() {
+  if (!isTyping) {
+    isTyping = true;
+    fetch("{{ url_for('chat.poll', conv_id=conv.id) }}", { method: 'GET' }).catch(() => {});
+  }
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => { isTyping = false; }, 2000);
+  // Auto-resize textarea
+  const ta = document.getElementById('msg-input');
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+}
+
+function showTyping() {
+  const el  = document.getElementById('typing-indicator');
+  const img = document.getElementById('typing-avatar');
+  if (img && OTHER_AVATAR) img.src = OTHER_AVATAR;
+  else if (img) img.style.display = 'none';
+  el.style.display = 'flex';
+  msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+function hideTyping() { document.getElementById('typing-indicator').style.display = 'none'; }
+
+// ── File attachment ──
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { alert('File too large. Max 10 MB.'); input.value = ''; return; }
+  selectedFile = file;
+  const bar     = document.getElementById('file-preview-bar');
+  const content = document.getElementById('file-preview-content');
+  bar.style.display = 'flex';
+  const reader = new FileReader();
+  reader.onload = e => {
+    content.innerHTML = `<img src="${e.target.result}" alt="preview" class="file-preview-img" />`
+      + `<span class="file-preview-name">${file.name}</span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAttachment() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-preview-bar').style.display = 'none';
+  document.getElementById('file-preview-content').innerHTML = '';
+}
+
+// ── Send ──
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
 async function sendMessage() {
-    const content   = input.value.trim();
-    const imageFile = imgInput.files[0];
-    if (!content && !imageFile) return;
+  const input   = document.getElementById('msg-input');
+  const content = input.value.trim();
+  if (!content && !selectedFile) return;
 
-    sendBtn.disabled = true;
-    sendingIndicator.classList.add('visible');
+  const fd = new FormData();
+  fd.append('content', content);
+  if (selectedFile) fd.append('image', selectedFile);
 
-    const formData = new FormData();
-    formData.append('content', content);
-    if (imageFile) formData.append('image', imageFile);
+  input.value = '';
+  input.style.height = 'auto';
+  clearAttachment();
 
-    input.value = '';
-    input.style.height = '';
-    input.placeholder = 'Type a message…';
-    removeImage();
+  // Optimistic bubble
+  const tempWrap = appendMessage({ content, time: 'Sending…' }, 'sent', true);
 
-    try {
-        const res  = await fetch(SEND_URL, { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.ok) {
-            renderMessage(data.message);
-            statusBar.textContent = '';
-        } else {
-            statusBar.textContent = '⚠️ Failed to send. Please try again.';
-        }
-    } catch (err) {
-        statusBar.textContent = '⚠️ Network error. Check your connection.';
-    } finally {
-        sendBtn.disabled = false;
-        sendingIndicator.classList.remove('visible');
+  try {
+    const res  = await fetch(SEND_URL, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      if (tempWrap) tempWrap.remove();
+      const finalWrap = appendMessage({
+        id:      data.message.id,
+        content: data.message.content,
+        image:   data.message.image,
+        time:    data.message.created_at ? data.message.created_at.substring(11,16) : 'Just now',
+      }, 'sent');
+      if (data.message.id > lastMsgId) lastMsgId = data.message.id;
+    } else {
+      if (tempWrap) tempWrap.remove();
     }
+  } catch(e) { if (tempWrap) tempWrap.remove(); }
 }
 
-// ── Render message ────────────────────────────────────────────────────────────
-function renderMessage(msg) {
-    if (container.querySelector('[data-msg-id="' + msg.id + '"]')) return;
+// ── Render message ──
+function appendMessage(msg, type, isPending = false) {
+  const emptyEl = msgContainer.querySelector('.empty-chat');
+  if (emptyEl) emptyEl.remove();
 
-    const emptyEl = container.querySelector('.empty-chat');
-    if (emptyEl) emptyEl.remove();
+  const wrap = document.createElement('div');
+  wrap.className = `message-wrap ${type}`;
+  if (msg.id) { wrap.dataset.id = msg.id; if (type === 'sent') wrap.dataset.unsendable = '1'; }
 
-    const row = document.createElement('div');
-    row.className = 'msg-row' + (msg.is_mine ? ' mine' : '');
-    row.dataset.msgId = msg.id;
+  let avatarHtml = '';
+  if (type === 'received') {
+    avatarHtml = OTHER_AVATAR
+      ? `<div class="msg-avatar"><img src="${OTHER_AVATAR}" alt="" /></div>`
+      : `<div class="msg-avatar">👤</div>`;
+  }
 
-    const time = msg.created_at ? msg.created_at.substring(11, 16) : '';
+  const senderRow = type === 'received'
+    ? `<div class="msg-sender-row"><span class="msg-sender-name">{{ other_user.full_name.split()[0] }}</span></div>`
+    : '';
 
-    let avatarHtml = '';
-    if (!msg.is_mine) {
-        const pic = msg.sender_pic || '';
-        if (pic && pic.startsWith('data:')) {
-            avatarHtml = '<div class="msg-avatar"><img src="' + pic + '" /></div>';
-        } else if (pic) {
-            avatarHtml = '<div class="msg-avatar"><img src="' + PROFILE_BASE + pic + '" /></div>';
-        } else {
-            avatarHtml = '<div class="msg-avatar">👤</div>';
-        }
-    }
+  let attachHtml = '';
+  if (msg.image) {
+    const src = msg.image.startsWith('http') ? msg.image : CHAT_BASE + msg.image;
+    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" onclick="openLightbox(this.src)" /></div>`;
+  }
 
-    const senderName = !msg.is_mine
-        ? '<div class="msg-sender-name">' + escapeHtml(msg.sender_name.split(' ')[0]) + '</div>'
-        : '';
+  const contentHtml = msg.content
+    ? `<div class="msg-content">${escapeHtml(msg.content)}</div>` : '';
 
-    const imageHtml = msg.image
-        ? '<img class="msg-img" src="' + CHAT_BASE + msg.image + '" alt="image" onclick="openLightbox(this.src)"' +
-          (msg.content ? ' style="margin-bottom:.4rem;"' : '') + ' />'
-        : '';
+  let statusHtml = '';
+  if (type === 'sent') {
+    const sv  = isPending ? 'sending' : 'sent';
+    const mid = msg.id ? ` data-msg-id="${msg.id}"` : '';
+    statusHtml = `<span class="msg-status" data-status="${sv}" title="${sv}"${mid}>`
+      + `<i class="fa fa-check tick-1"></i><i class="fa fa-check tick-2"></i></span>`;
+  }
 
-    const contentHtml = msg.content
-        ? '<span class="msg-content">' + escapeHtml(msg.content) + '</span>'
-        : '';
+  wrap.innerHTML = avatarHtml +
+    `<div class="message-bubble-group">${senderRow}` +
+      `<div class="message-bubble">${attachHtml}${contentHtml}` +
+        `<div class="msg-footer"><span class="msg-time">${msg.time || 'Just now'}</span>${statusHtml}</div>` +
+      `</div>` +
+    `</div>`;
 
-    const deleteBtn = msg.is_mine
-        ? '<button class="msg-delete-btn" title="Delete message" onclick="startDelete(this,' + msg.id + ')">🗑</button>'
-        : '';
-
-    const confirmOverlay = msg.is_mine
-        ? '<div class="msg-delete-confirm" id="confirm-' + msg.id + '">' +
-          '<span>Delete?</span>' +
-          '<button class="msg-confirm-yes" onclick="confirmDelete(' + msg.id + ')">Yes</button>' +
-          '<button class="msg-confirm-no" onclick="cancelDelete(' + msg.id + ')">No</button>' +
-          '</div>'
-        : '';
-
-    row.innerHTML =
-        avatarHtml +
-        deleteBtn +
-        '<div class="msg-col">' +
-            senderName +
-            '<div class="msg-bubble" id="bubble-' + msg.id + '">' +
-                confirmOverlay +
-                imageHtml +
-                contentHtml +
-                '<span class="msg-time">' + time + '</span>' +
-            '</div>' +
-        '</div>';
-
-    const refEl = lastMsgId > 0
-        ? container.querySelector('[data-msg-id="' + lastMsgId + '"]')
-        : null;
-    if (refEl) refEl.insertAdjacentElement('afterend', row);
-    else container.appendChild(row);
-
-    if (msg.id > lastMsgId) lastMsgId = msg.id;
-    scrollToBottom(true);
+  msgContainer.appendChild(wrap);
+  scrollToBottom(true);
+  attachContextMenu(wrap);
+  return wrap;
 }
 
 function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-              .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
 }
 
-// ── Delete message ────────────────────────────────────────────────────────────
-function startDelete(btn, msgId) {
-    // Show confirm overlay on the bubble
-    const confirm = document.getElementById('confirm-' + msgId);
-    if (confirm) confirm.classList.add('active');
-    // Hide the delete button
-    btn.style.display = 'none';
+// ── Context menu ──
+let _ctxWrap = null;
+const _menu        = document.getElementById('msg-context-menu');
+const _ctxCopyBtn  = document.getElementById('ctx-copy');
+const _ctxUnsendBtn = document.getElementById('ctx-unsend');
+
+function openContextMenu(e, wrap) {
+  e.preventDefault();
+  _ctxWrap = wrap;
+  const canUnsend = wrap.dataset.unsendable === '1';
+  _ctxUnsendBtn.style.display = canUnsend ? 'flex' : 'none';
+  const content = wrap.querySelector('.msg-content:not(.msg-unsent-text)');
+  _ctxCopyBtn.style.display = (content && content.textContent.trim()) ? 'flex' : 'none';
+  if (!canUnsend && (!content || !content.textContent.trim())) return;
+  _menu.style.display = 'block';
+  const mx = e.clientX || window.innerWidth / 2;
+  const my = e.clientY || window.innerHeight / 2;
+  _menu.style.left = Math.min(mx, window.innerWidth  - _menu.offsetWidth  - 8) + 'px';
+  _menu.style.top  = Math.min(my, window.innerHeight - _menu.offsetHeight - 8) + 'px';
+}
+function closeContextMenu() { _menu.style.display = 'none'; _ctxWrap = null; }
+
+function ctxCopy() {
+  if (!_ctxWrap) return;
+  const c = _ctxWrap.querySelector('.msg-content:not(.msg-unsent-text)');
+  if (c) navigator.clipboard.writeText(c.textContent.trim()).catch(() => {});
+  closeContextMenu();
 }
 
-function cancelDelete(msgId) {
-    const confirm = document.getElementById('confirm-' + msgId);
-    if (confirm) confirm.classList.remove('active');
-    // Re-show delete btn on hover (done via CSS)
+async function ctxUnsend() {
+  if (!_ctxWrap) return;
+  const msgId = _ctxWrap.dataset.id;
+  closeContextMenu();
+  if (!confirm('Delete this message? This cannot be undone.')) return;
+  try {
+    const res  = await fetch(`${UNSEND_BASE}${msgId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) handleUnsent(parseInt(msgId, 10));
+    else alert(data.error || 'Could not delete message.');
+  } catch(e) { alert('Network error. Please try again.'); }
 }
 
-async function confirmDelete(msgId) {
-    const bubble  = document.getElementById('bubble-' + msgId);
-    const confirm = document.getElementById('confirm-' + msgId);
-    const row     = document.querySelector('[data-msg-id="' + msgId + '"]');
-
-    if (confirm) confirm.classList.remove('active');
-    if (bubble)  bubble.classList.add('msg-deleting');
-
-    try {
-        const res  = await fetch(DELETE_BASE + msgId, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.ok) {
-            // Replace bubble content with deleted indicator
-            if (bubble) {
-                bubble.classList.remove('msg-deleting');
-                bubble.classList.add('deleted');
-                bubble.innerHTML = '<span style="font-size:.82rem;">🚫 Message deleted</span>' +
-                                   '<span class="msg-time" style="color:rgba(255,255,255,.5);">' +
-                                   (bubble.querySelector('.msg-time') ? bubble.querySelector('.msg-time').textContent : '') + '</span>';
-            }
-            // Remove the delete button
-            const delBtn = row ? row.querySelector('.msg-delete-btn') : null;
-            if (delBtn) delBtn.remove();
-        } else {
-            if (bubble) bubble.classList.remove('msg-deleting');
-            statusBar.textContent = '⚠️ Could not delete message.';
-            setTimeout(() => { statusBar.textContent = ''; }, 3000);
-        }
-    } catch (e) {
-        if (bubble) bubble.classList.remove('msg-deleting');
-        statusBar.textContent = '⚠️ Network error.';
-        setTimeout(() => { statusBar.textContent = ''; }, 3000);
-    }
+function handleUnsent(msgId) {
+  const wrap = document.querySelector(`.message-wrap[data-id="${msgId}"]`);
+  if (!wrap) return;
+  const bubble = wrap.querySelector('.message-bubble');
+  if (bubble) {
+    bubble.classList.add('msg-deleted');
+    const isSent = wrap.classList.contains('sent');
+    bubble.innerHTML = `<div class="msg-content msg-unsent-text"><i class="fa fa-ban"></i> ${isSent ? 'You deleted this message.' : 'This message was deleted.'}</div>`;
+  }
+  wrap.removeAttribute('data-unsendable');
 }
 
-// ── Polling ───────────────────────────────────────────────────────────────────
-let polling = false;
-async function poll() {
-    if (polling) return;
-    polling = true;
-    try {
-        const res  = await fetch(POLL_URL + '?since=' + lastMsgId);
-        const data = await res.json();
-        if (data.ok && data.messages.length > 0) {
-            data.messages.forEach(renderMessage);
-        }
-    } catch (e) { /* ignore */ }
-    finally { polling = false; }
-}
-setInterval(poll, 10000);
+window._handleUnsent = handleUnsent;
 
-// ── Lightbox ──────────────────────────────────────────────────────────────────
+document.addEventListener('click', e => { if (!_menu.contains(e.target)) closeContextMenu(); });
+document.addEventListener('scroll', closeContextMenu, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeContextMenu(); closeLightbox(); } });
+
+let _longPress = null;
+function attachContextMenu(wrap) {
+  wrap.addEventListener('contextmenu', e => openContextMenu(e, wrap));
+  wrap.addEventListener('touchstart', e => { _longPress = setTimeout(() => openContextMenu(e, wrap), 500); }, { passive: true });
+  wrap.addEventListener('touchend',  () => clearTimeout(_longPress));
+  wrap.addEventListener('touchmove', () => clearTimeout(_longPress));
+}
+document.querySelectorAll('.message-wrap').forEach(attachContextMenu);
+
+// ── Lightbox ──
 function openLightbox(src) {
-    document.getElementById('lightboxImg').src = src;
-    document.getElementById('imgLightbox').classList.add('open');
-    document.body.style.overflow = 'hidden';
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('imgLightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 function closeLightbox() {
-    document.getElementById('imgLightbox').classList.remove('open');
-    document.body.style.overflow = '';
+  document.getElementById('imgLightbox').classList.remove('open');
+  document.body.style.overflow = '';
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ── Init ──
+window.addEventListener('load', () => {
+  scrollToBottom(false);
+  startPolling();
+  document.getElementById('msg-input').focus();
+});
 </script>
 {% endblock %}
