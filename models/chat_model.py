@@ -66,7 +66,7 @@ def get_user_conversations(user_id: int) -> list[dict]:
 
     cursor.execute("""
         SELECT
-            c.id            AS conv_id,
+            c.id,
             c.item_id,
             c.created_at    AS conv_created,
             CASE WHEN c.user1_id = ? THEN c.user2_id ELSE c.user1_id END AS other_id,
