@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/uploads/chat/(.*)",
+      "dest": "app.py"
+    },
+    {
+      "src": "/static/uploads/profiles/(.*)",
+      "dest": "app.py"
+    },
+    {
+      "src": "/static/uploads/items/(.*)",
+      "dest": "app.py"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "app.py"
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app.py"
+    }
+  ]
+}
