@@ -3,816 +3,412 @@
 
 {% block extra_css %}
 <style>
-   /* 
- * Messages Inbox Styles - Enhanced Version
- * Modern, responsive, and visually appealing design
- * Updated with improved contrast for better readability
- */
+/* ══════════════════════════════════════
+   INBOX — Clean Modern Layout
+   ══════════════════════════════════════ */
 
-:root {
-    --primary: #1a56db;
-    --primary-dark: #1341a8;
-    --primary-light: #e8effd;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Main Container */
-.chat-inbox-wrap {
-    max-width: 800px;
+.inbox-page {
+    max-width: 640px;
     margin: 0 auto;
-    width: 100%;
-    animation: fadeInUp 0.5s ease;
+    padding: 0 0 80px;
 }
 
-/* Header Styles */
+/* ── Header ── */
 .inbox-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.75rem;
-    gap: 1rem;
-    flex-wrap: wrap;
-    padding: 0 0.25rem;
+    padding: 1.25rem 1rem 0.75rem;
+    position: sticky;
+    top: 0;
+    background: var(--bg, #f0f4f8);
+    z-index: 10;
 }
 
-.inbox-header h2 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: var(--gray-900);
+.inbox-title {
+    font-size: 1.3rem;
     font-weight: 800;
+    color: #0f172a;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    letter-spacing: -0.02em;
+    margin: 0;
 }
 
-.inbox-header h2 i {
-    color: var(--primary);
-    font-size: 1.4rem;
-}
-
-.unread-header-badge {
-    background: linear-gradient(135deg, var(--danger), #dc2626);
-    color: white;
-    border-radius: 20px;
-    font-size: 0.7rem;
+.inbox-unread-pill {
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
     font-weight: 800;
-    padding: 0.2rem 0.7rem;
-    margin-left: 0.5rem;
-    animation: pulse 2s infinite;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
 }
 
-/* Contact Admin Button */
-.contact-admin-btn {
+.btn-contact-admin {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    border-radius: var(--radius-md);
-    padding: 0.6rem 1.2rem;
-    font-size: 0.85rem;
+    gap: 0.4rem;
+    background: #1a56db;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    font-size: 0.8rem;
     font-weight: 700;
     text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
     white-space: nowrap;
-    transition: all var(--transition-fast);
-    box-shadow: var(--shadow-sm);
-    border: none;
-    cursor: pointer;
 }
-
-.contact-admin-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+.btn-contact-admin:hover {
+    background: #1341a8;
+    transform: translateY(-1px);
+    color: #fff;
     text-decoration: none;
-    color: white;
-    background: linear-gradient(135deg, var(--primary-dark), #0e3a8a);
 }
 
-.contact-admin-btn:active {
-    transform: translateY(0);
+/* ── Search ── */
+.inbox-search {
+    padding: 0.5rem 1rem 0.75rem;
 }
+.inbox-search-inner {
+    position: relative;
+}
+.inbox-search-inner span {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+.inbox-search input {
+    width: 100%;
+    padding: 0.65rem 1rem 0.65rem 2.4rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    background: #fff;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+.inbox-search input:focus {
+    border-color: #1a56db;
+    box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+.inbox-search input::placeholder { color: #94a3b8; }
 
-/* Conversation List */
+/* ── List ── */
 .conv-list {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    padding: 0 0.75rem;
+    gap: 0;
 }
 
-/* Conversation Item */
+/* ── Item ── */
 .conv-item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    background: white;
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-lg);
-    padding: 1rem 1.25rem;
+    gap: 0.85rem;
+    padding: 0.9rem 0.75rem;
+    border-radius: 14px;
     text-decoration: none;
     color: inherit;
-    transition: all var(--transition-base);
+    transition: background 0.15s;
     position: relative;
-    overflow: hidden;
-    cursor: pointer;
 }
+.conv-item:hover { background: rgba(26,86,219,0.05); }
+.conv-item.has-unread { background: #eff6ff; }
+.conv-item.has-unread:hover { background: #dbeafe; }
 
-.conv-item::before {
+/* Divider between items */
+.conv-item + .conv-item::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-light), transparent);
-    transform: scaleX(0);
-    transition: transform var(--transition-base);
-    transform-origin: left;
+    left: calc(0.75rem + 52px + 0.85rem);
+    right: 0.75rem;
+    height: 1px;
+    background: #f1f5f9;
 }
+.conv-item.has-unread + .conv-item::before,
+.conv-item + .conv-item.has-unread::before { background: transparent; }
 
-.conv-item:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--primary);
-}
-
-.conv-item:hover::before {
-    transform: scaleX(1);
-}
-
-.conv-item:active {
-    transform: translateY(-1px);
-}
-
-/* Unread Conversation */
-.conv-item.has-unread {
-    background: linear-gradient(135deg, #eff6ff, white);
-    border-left: 4px solid var(--primary);
-    position: relative;
-}
-
-.conv-item.has-unread::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 60%;
-    background: var(--primary);
-    border-radius: 0 2px 2px 0;
-}
-
-/* Avatar */
+/* ── Avatar ── */
 .conv-avatar {
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+    background: #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.4rem;
     flex-shrink: 0;
     overflow: hidden;
-    transition: all var(--transition-base);
     position: relative;
-    box-shadow: var(--shadow-sm);
+    border: 2px solid #e8edf3;
 }
-
-.conv-item:hover .conv-avatar {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-md);
-}
-
+.conv-item.has-unread .conv-avatar { border-color: #93c5fd; }
 .conv-avatar img {
-    width: 56px;
-    height: 56px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    transition: transform var(--transition-base);
+    display: block;
 }
 
-.conv-item:hover .conv-avatar img {
-    transform: scale(1.1);
-}
+/* ── Body ── */
+.conv-body { flex: 1; min-width: 0; }
 
-/* Online Indicator */
-.avatar-online {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 14px;
-    height: 14px;
-    background: var(--success);
-    border-radius: 50%;
-    border: 2px solid white;
-    animation: pulse 1.5s infinite;
-}
-
-/* Conversation Body */
-.conv-body {
-    flex: 1;
-    min-width: 0;
-}
-
-.conv-name {
-    font-weight: 800;
-    font-size: 1rem;
-    color: var(--gray-900);
+.conv-name-row {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.25rem;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.15rem;
 }
-
-/* Role Badges - Improved contrast */
-.conv-role-badge {
-    font-size: 0.65rem;
+.conv-name {
+    font-size: 0.9rem;
     font-weight: 700;
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+.conv-item.has-unread .conv-name { font-weight: 800; }
 
-.conv-role-badge.user {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.conv-role-badge.admin {
+.conv-admin-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
     background: #fef3c7;
     color: #92400e;
+    flex-shrink: 0;
 }
 
-.conv-role-badge i {
-    font-size: 0.6rem;
-}
-
-/* Item Tag - Improved contrast */
 .conv-item-tag {
-    font-size: 0.7rem;
-    color: var(--gray-700);
-    margin-top: 0.15rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: var(--gray-100);
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    max-width: 100%;
-}
-
-/* Last Message Preview - Improved contrast */
-.conv-last-msg {
-    font-size: 0.85rem;
-    color: var(--gray-700);
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.2rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-top: 0.35rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
 }
 
-.conv-last-msg i {
-    font-size: 0.7rem;
-    color: var(--gray-500);
-    flex-shrink: 0;
-}
-
-.conv-last-msg .message-preview {
+.conv-preview {
+    font-size: 0.8rem;
+    color: #64748b;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+}
+.conv-item.has-unread .conv-preview {
+    color: #1e40af;
+    font-weight: 600;
 }
 
-/* Meta Information - Improved contrast */
+/* ── Meta ── */
 .conv-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.35rem;
-    flex-shrink: 0;
-}
-
-.conv-time {
-    font-size: 0.7rem;
-    color: var(--gray-600);
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-weight: 500;
-}
-
-.conv-time i {
-    font-size: 0.65rem;
-}
-
-/* Unread Badge */
-.conv-unread-badge {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    padding: 0.2rem 0.6rem;
-    min-width: 24px;
-    text-align: center;
-    animation: pulse 2s infinite;
-    box-shadow: var(--shadow-xs);
-}
-
-/* Empty State - Improved contrast */
-.inbox-empty {
-    background: white;
-    border-radius: var(--radius-xl);
-    padding: 4rem 2rem;
-    text-align: center;
-    border: 1px solid var(--gray-200);
-    box-shadow: var(--shadow-md);
-    animation: fadeInUp 0.5s ease;
-}
-
-.inbox-empty .empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    color: var(--gray-500);
-}
-
-.inbox-empty .empty-icon i {
-    font-size: 4rem;
-}
-
-.inbox-empty p {
-    color: var(--gray-700);
-    font-size: 0.95rem;
-    margin: 0 0 1.5rem;
-    font-weight: 500;
-}
-
-.inbox-empty .subtext {
-    font-size: 0.85rem;
-    color: var(--gray-500);
-    margin-top: -0.5rem;
-    margin-bottom: 1.5rem;
-}
-
-/* Skeleton Loading */
-@keyframes skeleton-shimmer {
-    0% {
-        background-position: -600px 0;
-    }
-    100% {
-        background-position: 600px 0;
-    }
-}
-
-.skeleton {
-    background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
-    background-size: 600px 100%;
-    animation: skeleton-shimmer 1.4s infinite linear;
-    border-radius: 6px;
-}
-
-.skeleton-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background: white;
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-lg);
-    padding: 1rem 1.25rem;
-    margin-bottom: 0.75rem;
-}
-
-.skeleton-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.skeleton-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.skeleton-name {
-    height: 16px;
-    width: 45%;
-}
-
-.skeleton-tag {
-    height: 12px;
-    width: 30%;
-}
-
-.skeleton-msg {
-    height: 14px;
-    width: 70%;
-}
-
-.skeleton-meta {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 0.4rem;
     flex-shrink: 0;
+    min-width: 48px;
 }
-
-.skeleton-time {
-    height: 10px;
-    width: 50px;
+.conv-time {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    white-space: nowrap;
 }
+.conv-item.has-unread .conv-time { color: #1a56db; font-weight: 700; }
 
-.skeleton-badge {
+.conv-unread-badge {
+    background: #1a56db;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    min-width: 20px;
     height: 20px;
-    width: 28px;
-    border-radius: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Animations */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.05);
-        opacity: 0.9;
-    }
-}
-
-@keyframes slideInRight {
-    from {
-        opacity: 0;
-        transform: translateX(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* Search Bar (Optional) */
-.inbox-search {
-    margin-bottom: 1.25rem;
-    animation: fadeInUp 0.5s ease;
-}
-
-.search-input-wrapper {
-    position: relative;
-}
-
-.search-input-wrapper i {
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--gray-500);
-    font-size: 0.9rem;
-}
-
-.search-input {
-    width: 100%;
-    padding: 0.75rem 1rem 0.75rem 2.5rem;
-    border: 2px solid var(--gray-200);
-    border-radius: var(--radius-md);
-    font-size: 0.9rem;
-    transition: all var(--transition-fast);
-    background: white;
-    color: var(--gray-900);
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-.search-input::placeholder {
-    color: var(--gray-500);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .chat-inbox-wrap {
-        padding: 0 0.75rem;
-    }
-    
-    .inbox-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .contact-admin-btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .conv-item {
-        padding: 0.85rem 1rem;
-        gap: 0.75rem;
-    }
-    
-    .conv-avatar {
-        width: 48px;
-        height: 48px;
-        font-size: 1.4rem;
-    }
-    
-    .conv-avatar img {
-        width: 48px;
-        height: 48px;
-    }
-    
-    .conv-name {
-        font-size: 0.9rem;
-    }
-    
-    .conv-last-msg {
-        font-size: 0.8rem;
-    }
-    
-    .skeleton-avatar {
-        width: 48px;
-        height: 48px;
-    }
-    
-    .inbox-empty {
-        padding: 3rem 1.5rem;
-    }
-    
-    .inbox-empty .empty-icon {
-        font-size: 3rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .chat-inbox-wrap {
-        padding: 0 0.5rem;
-    }
-    
-    .conv-item {
-        padding: 0.75rem;
-        gap: 0.6rem;
-    }
-    
-    .conv-avatar {
-        width: 42px;
-        height: 42px;
-        font-size: 1.2rem;
-    }
-    
-    .conv-avatar img {
-        width: 42px;
-        height: 42px;
-    }
-    
-    .conv-name {
-        font-size: 0.85rem;
-    }
-    
-    .conv-last-msg {
-        font-size: 0.75rem;
-    }
-    
-    .conv-time {
-        font-size: 0.65rem;
-    }
-    
-    .conv-unread-badge {
-        font-size: 0.65rem;
-        padding: 0.15rem 0.5rem;
-        min-width: 20px;
-    }
-    
-    .skeleton-avatar {
-        width: 42px;
-        height: 42px;
-    }
-    
-    .inbox-header h2 {
-        font-size: 1.25rem;
-    }
-}
-
-/* Dark Mode Support - Removed for better contrast in light mode */
-
-/* Hover Effects for Touch Devices */
-@media (hover: hover) {
-    .conv-item:hover {
-        transform: translateY(-3px);
-    }
-}
-
-/* Loading State */
-.loading-more {
+/* ── Empty ── */
+.inbox-empty {
     text-align: center;
-    padding: 1rem;
-    color: var(--gray-600);
+    padding: 4rem 1.5rem;
+    color: #94a3b8;
 }
+.inbox-empty .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+.inbox-empty p { font-size: 0.9rem; color: #64748b; margin: 0 0 1.5rem; }
 
-.loading-more i {
-    animation: spin 1s linear infinite;
+/* ── Skeleton ── */
+@keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
 }
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 600px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 6px;
 }
-
-/* Scrollbar Styling */
-.conv-list::-webkit-scrollbar {
-    width: 6px;
+.skeleton-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1.5rem;
 }
+.sk-avatar { width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; }
+.sk-body   { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; }
+.sk-name   { height: 14px; width: 44%; }
+.sk-sub    { height: 11px; width: 28%; }
+.sk-msg    { height: 12px; width: 68%; }
+.sk-meta   { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+.sk-time   { height: 10px; width: 40px; }
+.sk-badge  { height: 20px; width: 26px; border-radius: 999px; }
 
-.conv-list::-webkit-scrollbar-track {
-    background: var(--gray-100);
-    border-radius: 10px;
-}
-
-.conv-list::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: 10px;
-}
-
-.conv-list::-webkit-scrollbar-thumb:hover {
-    background: var(--gray-400);
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .inbox-title   { font-size: 1.1rem; }
+    .conv-avatar   { width: 46px; height: 46px; font-size: 1.2rem; }
+    .conv-name     { font-size: 0.85rem; }
+    .conv-preview  { font-size: 0.76rem; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="chat-inbox-wrap">
-    <div class="inbox-header">
-        <h2>💬 Messages
-            {% if total_unread > 0 %}
-            <span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.68rem;
-                         padding:.1rem .5rem;font-weight:800;">{{ total_unread }}</span>
-            {% endif %}
-        </h2>
-        {% if session['user']['role'] != 'admin' %}
-        <a href="{{ url_for('chat.contact_admin') }}" class="contact-admin-btn">
-            🛡️ Contact Admin
-        </a>
-        {% endif %}
+<div class="inbox-page">
+
+  <!-- Header -->
+  <div class="inbox-header">
+    <h1 class="inbox-title">
+      💬 Messages
+      {% if total_unread > 0 %}
+      <span class="inbox-unread-pill">{{ total_unread }}</span>
+      {% endif %}
+    </h1>
+    {% if session['user']['role'] != 'admin' %}
+    <a href="{{ url_for('chat.contact_admin') }}" class="btn-contact-admin">
+      🛡️ Admin
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Search -->
+  <div class="inbox-search">
+    <div class="inbox-search-inner">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Search conversations…" oninput="filterConvs(this.value)" />
     </div>
+  </div>
 
-    <!-- Skeleton shown instantly while JS decides it's loaded -->
-    <div id="inboxSkeleton" aria-hidden="true">
-        {% for _ in range(3) %}
-        <div class="skeleton-item">
-            <div class="skeleton skeleton-avatar"></div>
-            <div class="skeleton-body">
-                <div class="skeleton skeleton-name"></div>
-                <div class="skeleton skeleton-tag"></div>
-                <div class="skeleton skeleton-msg"></div>
-            </div>
-            <div class="skeleton-meta">
-                <div class="skeleton skeleton-time"></div>
-                <div class="skeleton skeleton-badge"></div>
-            </div>
-        </div>
-        {% endfor %}
+  <!-- Skeleton -->
+  <div id="inboxSkeleton">
+    {% for _ in range(4) %}
+    <div class="skeleton-item">
+      <div class="skeleton sk-avatar"></div>
+      <div class="sk-body">
+        <div class="skeleton sk-name"></div>
+        <div class="skeleton sk-sub"></div>
+        <div class="skeleton sk-msg"></div>
+      </div>
+      <div class="sk-meta">
+        <div class="skeleton sk-time"></div>
+        <div class="skeleton sk-badge"></div>
+      </div>
     </div>
+    {% endfor %}
+  </div>
 
-    <!-- Real content (hidden until skeleton dismissed) -->
-    <div id="inboxContent" style="display:none;">
-        {% if conversations %}
-        <div class="conv-list">
-            {% for conv in conversations %}
-            <a href="{{ url_for('chat.conversation', conv_id=conv.conv_id) }}"
-               class="conv-item {% if conv.unread_count > 0 %}has-unread{% endif %}">
+  <!-- Content -->
+  <div id="inboxContent" style="display:none;">
+    {% if conversations %}
+    <div class="conv-list" id="convList">
+      {% for conv in conversations %}
+      <a href="{{ url_for('chat.conversation', conv_id=conv.id) }}"
+         class="conv-item {% if conv.unread_count > 0 %}has-unread{% endif %}"
+         data-name="{{ conv.other_name | lower }}">
 
-                <div class="conv-avatar">
-                    {% if conv.other_pic and conv.other_pic_status == 'approved' %}
-                        <img src="{% if conv.other_pic and conv.other_pic.startswith('data:') %}{{ conv.other_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ conv.other_pic) }}{% endif %}"
-                             alt="{{ conv.other_name }}" />
-                    {% else %}
-                        {% if conv.other_role == 'admin' %}🛡️{% else %}👤{% endif %}
-                    {% endif %}
-                </div>
-
-                <div class="conv-body">
-                    <div class="conv-name">
-                        {{ conv.other_name }}
-                        {% if conv.other_role == 'admin' %}
-                        <span class="conv-role-badge admin">Admin</span>
-                        {% endif %}
-                    </div>
-                    {% if conv.item_name %}
-                    <div class="conv-item-tag">📦 Re: {{ conv.item_name }}</div>
-                    {% endif %}
-                    <div class="conv-last-msg">
-                        {{ conv.last_message or 'No messages yet' }}
-                    </div>
-                </div>
-
-                <div class="conv-meta">
-                    {% if conv.last_message_at %}
-                    <span class="conv-time">{{ conv.last_message_at[5:16] }}</span>
-                    {% endif %}
-                    {% if conv.unread_count > 0 %}
-                    <span class="conv-unread-badge">{{ conv.unread_count }}</span>
-                    {% endif %}
-                </div>
-            </a>
-            {% endfor %}
+        <div class="conv-avatar">
+          {% if conv.other_pic and conv.other_pic_status == 'approved' %}
+            <img src="{% if conv.other_pic.startswith('data:') %}{{ conv.other_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ conv.other_pic) }}{% endif %}"
+                 alt="{{ conv.other_name }}" />
+          {% else %}
+            {% if conv.other_role == 'admin' %}🛡️{% else %}👤{% endif %}
+          {% endif %}
         </div>
 
-        {% else %}
-        <div class="inbox-empty">
-            <div class="empty-icon">💬</div>
-            <p>No conversations yet.</p>
-            {% if session['user']['role'] != 'admin' %}
-            <a href="{{ url_for('chat.contact_admin') }}" class="contact-admin-btn">
-                🛡️ Message Admin
-            </a>
-            {% endif %}
+        <div class="conv-body">
+          <div class="conv-name-row">
+            <span class="conv-name">{{ conv.other_name }}</span>
+            {% if conv.other_role == 'admin' %}<span class="conv-admin-badge">Admin</span>{% endif %}
+          </div>
+          {% if conv.item_name %}
+          <div class="conv-item-tag">📦 {{ conv.item_name }}</div>
+          {% endif %}
+          <div class="conv-preview">
+            {{ conv.last_message or 'No messages yet' }}
+          </div>
         </div>
-        {% endif %}
+
+        <div class="conv-meta">
+          {% if conv.last_message_at %}
+          <span class="conv-time">{{ conv.last_message_at[5:16] }}</span>
+          {% endif %}
+          {% if conv.unread_count > 0 %}
+          <span class="conv-unread-badge">{{ conv.unread_count }}</span>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
     </div>
+
+    {% else %}
+    <div class="inbox-empty">
+      <div class="empty-icon">💬</div>
+      <p>No conversations yet.</p>
+      {% if session['user']['role'] != 'admin' %}
+      <a href="{{ url_for('chat.contact_admin') }}" class="btn-contact-admin">
+        🛡️ Message Admin
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
 </div>
 
 <script>
-// Show real content after a brief skeleton display (min 400ms for UX polish,
-// cap at DOMContentLoaded so fast connections don't wait unnecessarily).
+// Skeleton → content reveal
 (function () {
-    var MIN_SKELETON_MS = 400;
-    var start = Date.now();
-
-    function reveal() {
-        var elapsed = Date.now() - start;
-        var remaining = Math.max(0, MIN_SKELETON_MS - elapsed);
-        setTimeout(function () {
-            var skeleton = document.getElementById('inboxSkeleton');
-            var content  = document.getElementById('inboxContent');
-            if (skeleton) skeleton.style.display = 'none';
-            if (content)  content.style.display  = '';
-        }, remaining);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', reveal);
-    } else {
-        reveal();
-    }
+  var MIN = 400, start = Date.now();
+  function reveal() {
+    var wait = Math.max(0, MIN - (Date.now() - start));
+    setTimeout(function () {
+      document.getElementById('inboxSkeleton').style.display = 'none';
+      document.getElementById('inboxContent').style.display  = '';
+    }, wait);
+  }
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', reveal)
+    : reveal();
 })();
+
+// Search filter
+function filterConvs(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#convList .conv-item').forEach(function(el) {
+    var name = (el.dataset.name || '');
+    el.style.display = (!q || name.includes(q)) ? '' : 'none';
+  });
+}
 </script>
 {% endblock %}

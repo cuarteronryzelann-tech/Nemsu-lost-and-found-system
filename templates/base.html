@@ -607,6 +607,7 @@
     <footer class="footer"><p>&copy; 2024 NEMSU Lost &amp; Found System.</p></footer>
 
     <!-- ── Mobile Bottom Navigation Bar (user layout only) ── -->
+    {% if request.endpoint != 'chat.conversation' %}
     <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
       <div class="mobile-bottom-nav-inner">
 
@@ -671,6 +672,7 @@
 
       </div>
     </nav>
+    {% endif %}
 
     <!-- ── Report Bottom Sheet ── -->
     <div id="report-sheet-overlay" role="presentation"></div>
