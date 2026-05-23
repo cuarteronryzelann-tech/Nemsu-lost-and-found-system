@@ -539,7 +539,7 @@
     <!-- Item preview -->
     <div class="claim-item-preview">
         {% if claim.item_image %}
-        <img src="{{ '/static/uploads/items/' ~ claim.item_image }}" 
+        <img src="{{ image_src(claim.item_image, 'items') }}" 
              alt="{{ claim.item_name }}" 
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy" decoding="async">
         <div class="no-img" style="display: none;">📦</div>

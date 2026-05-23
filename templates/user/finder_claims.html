@@ -81,7 +81,7 @@
   <div class="fc-card status-{{ claim.status }}" data-status="{{ claim.status }}">
     {% if claim.item_image %}
     <img class="fc-img"
-         src="{{ '/static/uploads/items/' ~ claim.item_image }}"
+         src="{{ image_src(claim.item_image, 'items') }}"
          alt="{{ claim.item_name }}"
          loading="lazy"
          onerror="this.style.display='none'"/>

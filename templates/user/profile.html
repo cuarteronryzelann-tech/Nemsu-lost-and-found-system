@@ -665,7 +665,7 @@ input[type=file].hidden-input {
                     {% if pic.startswith('data:') %}
                         <img id="profileImage" src="{{ pic }}" alt="Profile Picture" />
                     {% else %}
-                        <img id="profileImage" src="{{ '/static/uploads/profiles/' ~ pic }}" alt="Profile Picture" />
+                        <img id="profileImage" src="{{ image_src(pic, 'profiles') }}" alt="Profile Picture" />
                     {% endif %}
                 {% else %}
                     <div class="avatar-placeholder" id="profileImage">👤</div>
@@ -834,7 +834,7 @@ input[type=file].hidden-input {
                 <div class="item-card2">
                     <div class="ic2-img">
                         {% if item.image_filename %}
-                        <img src="{{ '/static/uploads/items/' ~ item.image_filename }}"
+                        <img src="{{ image_src(item.image_filename, 'items') }}"
                              alt="{{ item.name }}"
                              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMzAwIDIwMCI+CiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmMWY1ZjkiLz4KICA8cmVjdCB4PSIxMTUiIHk9IjY1IiB3aWR0aD0iNzAiIGhlaWdodD0iNTUiIHJ4PSI2IiBmaWxsPSIjY2JkNWUxIi8+CiAgPGNpcmNsZSBjeD0iMTUwIiBjeT0iODUiIHI9IjEyIiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHBhdGggZD0iTTExNSAxMjAgbDM1LTI1IDIwIDE4IDE1LTEyIDE1IDE5IiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHRleHQgeD0iMTUwIiB5PSIxNTUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOTRhM2I4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD4KPC9zdmc+'" loading="lazy" decoding="async">
                         {% else %}
@@ -880,7 +880,7 @@ input[type=file].hidden-input {
                 <div class="claim-row">
                     <div class="cr-img">
                         {% if claim.item_image %}
-                        <img src="{{ '/static/uploads/items/' ~ claim.item_image }}"
+                        <img src="{{ image_src(claim.item_image, 'items') }}"
                              alt="{{ claim.item_name }}"
                              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDkwIDkwIj4KICA8cmVjdCB3aWR0aD0iOTAiIGhlaWdodD0iOTAiIGZpbGw9IiNmMWY1ZjkiLz4KICA8cmVjdCB4PSIyOCIgeT0iMjUiIHdpZHRoPSIzNCIgaGVpZ2h0PSIyOCIgcng9IjQiIGZpbGw9IiNjYmQ1ZTEiLz4KICA8Y2lyY2xlIGN4PSI0NSIgY3k9IjM1IiByPSI3IiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHBhdGggZD0iTTI4IDUzIGwxNi0xMiAxMCA5IDgtNiA4IDkiIGZpbGw9IiM5NGEzYjgiLz4KICA8dGV4dCB4PSI0NSIgeT0iNzQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5NGEzYjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4='" loading="lazy" decoding="async">
                         {% else %}

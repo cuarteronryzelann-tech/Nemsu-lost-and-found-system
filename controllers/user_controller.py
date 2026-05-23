@@ -36,28 +36,40 @@ def allowed_image(filename):
 
 
 def save_upload(file, subfolder):
-    """Save an uploaded file and return the saved filename.
+    """Save an uploaded file. Tries ImgBB first (if IMGBB_API_KEY is set),
+    returns the ImgBB URL. Falls back to local filesystem and returns a filename.
 
-    On production (Render, Vercel, or any platform where PRODUCTION=true or
-    VERCEL is set) the filesystem outside /tmp is read-only or ephemeral, so
-    we store uploads in /tmp/uploads/<subfolder>/.  The _serve_upload() route
-    in app.py transparently serves files from /tmp first, then falls back to
-    the real static/ folder (for seed/fixture images that ship with the repo).
-
-    Locally (no PRODUCTION or VERCEL env var) files go into static/uploads so
-    Flask's built-in static handler serves them without a custom route.
+    Templates should use image_src() to resolve the stored value to a URL.
     """
+    from utils.imgbb import upload_file_to_imgbb
+    imgbb_url = upload_file_to_imgbb(file)
+    if imgbb_url:
+        return imgbb_url  # full URL stored in DB; used directly in <img src>
+
+    # Fallback: local filesystem
     ext      = file.filename.rsplit(".", 1)[1].lower()
     filename = f"{uuid.uuid4().hex}.{ext}"
     if os.environ.get("PRODUCTION") or os.environ.get("VERCEL"):
-        # Ephemeral-filesystem platforms: write to /tmp so the file survives
-        # within a single dyno/container lifetime and is served by _serve_upload.
         upload_dir = os.path.join("/tmp", "uploads", subfolder)
     else:
         upload_dir = os.path.join(current_app.root_path, "static", "uploads", subfolder)
     os.makedirs(upload_dir, exist_ok=True)
+    file.seek(0)
     file.save(os.path.join(upload_dir, filename))
     return filename
+
+
+def image_src(value, subfolder="items"):
+    """Resolve a stored image value to a usable <img src> URL.
+    - ImgBB URL (starts with http): return as-is
+    - base64 data URI: return as-is
+    - filename: prepend /static/uploads/<subfolder>/
+    """
+    if not value:
+        return ""
+    if value.startswith("http") or value.startswith("data:"):
+        return value
+    return f"/static/uploads/{subfolder}/{value}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -194,20 +206,27 @@ def upload_profile_picture():
         flash(f"File too large. Maximum size is {MAX_IMAGE_SIZE_MB}MB.", "error")
         return redirect(url_for("user." + redirect_to))
 
-    # Read and encode as base64 data-URI (persists across Render restarts)
+    # Try ImgBB first; fall back to base64 data-URI
+    from utils.imgbb import upload_file_to_imgbb
     import base64
-    img_bytes = file.read()
-    ext = file.filename.rsplit(".", 1)[1].lower()
-    mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg",
-            "png": "image/png", "gif": "image/gif",
-            "webp": "image/webp"}.get(ext, "image/jpeg")
-    data_uri = f"data:{mime};base64,{base64.b64encode(img_bytes).decode()}"
+    imgbb_url = upload_file_to_imgbb(file)
+    if imgbb_url:
+        picture_value = imgbb_url
+    else:
+        # Fallback: base64 data-URI (persists across Render restarts)
+        file.seek(0)
+        img_bytes = file.read()
+        ext = file.filename.rsplit(".", 1)[1].lower()
+        mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "png": "image/png", "gif": "image/gif",
+                "webp": "image/webp"}.get(ext, "image/jpeg")
+        picture_value = f"data:{mime};base64,{base64.b64encode(img_bytes).decode()}"
 
-    update_profile_picture(session["user"]["id"], data_uri, auto_approve=True)
+    update_profile_picture(session["user"]["id"], picture_value, auto_approve=True)
 
     # Update session so navbar avatar refreshes immediately
     user_data = dict(session["user"])
-    user_data["profile_picture"] = data_uri
+    user_data["profile_picture"] = picture_value
     user_data["profile_pic_status"] = "approved"
     session["user"] = user_data
     session.modified = True

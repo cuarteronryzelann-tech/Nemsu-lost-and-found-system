@@ -5,7 +5,7 @@
   {%- if pic.startswith('data:') -%}
     <img src="{{ pic }}" alt="{{ alt }}" style="width:{{ size }}px;height:{{ size }}px;border-radius:50%;object-fit:cover;" {% if css_class %}class="{{ css_class }}"{% endif %} />
   {%- else -%}
-    <img src="{{ '/static/uploads/profiles/' ~ pic }}" alt="{{ alt }}" style="width:{{ size }}px;height:{{ size }}px;border-radius:50%;object-fit:cover;" {% if css_class %}class="{{ css_class }}"{% endif %} />
+    <img src="{{ image_src(pic, 'profiles') }}" alt="{{ alt }}" style="width:{{ size }}px;height:{{ size }}px;border-radius:50%;object-fit:cover;" {% if css_class %}class="{{ css_class }}"{% endif %} />
   {%- endif -%}
 {%- else -%}
   <span style="width:{{ size }}px;height:{{ size }}px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:{{ (size*0.5)|int }}px;" {% if css_class %}class="{{ css_class }}"{% endif %}>👤</span>
@@ -14,6 +14,6 @@
 
 {%- macro item_img(filename, alt="Item", max_h=130) -%}
 {%- if filename -%}
-  <img src="{{ '/static/uploads/items/' ~ filename }}" alt="{{ alt }}" style="width:100%;height:{{ max_h }}px;object-fit:cover;border-radius:8px;margin-bottom:.5rem;" onerror="this.style.display='none'" / loading="lazy" decoding="async">
+  <img src="{{ image_src(filename, 'items') }}" alt="{{ alt }}" style="width:100%;height:{{ max_h }}px;object-fit:cover;border-radius:8px;margin-bottom:.5rem;" onerror="this.style.display='none'" / loading="lazy" decoding="async">
 {%- endif -%}
 {%- endmacro -%}

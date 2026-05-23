@@ -126,9 +126,20 @@ def conversation(conv_id):
 from werkzeug.utils import secure_filename
 import uuid
 
-# Vercel has a read-only filesystem except for /tmp
-UPLOAD_FOLDER = "/tmp/chat_uploads" if os.environ.get("VERCEL") else "static/uploads/chat"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Use same logic as save_upload() in user_controller:
+# - PRODUCTION/VERCEL → /tmp/uploads/chat  (served by _serve_upload in app.py)
+# - Local             → static/uploads/chat (served by Flask's static handler)
+def _chat_upload_folder():
+    if os.environ.get("PRODUCTION") or os.environ.get("VERCEL"):
+        return "/tmp/uploads/chat"
+    import os as _os
+    from flask import current_app
+    folder = _os.path.join(current_app.root_path, "static", "uploads", "chat")
+    return folder
+
+# Eagerly create at module load so the folder always exists for local dev
+_local_chat_folder = os.path.join("static", "uploads", "chat")
+os.makedirs(_local_chat_folder, exist_ok=True)
 
 @chat_bp.route("/<int:conv_id>/send", methods=["POST"])
 @login_required
@@ -158,13 +169,20 @@ def send(conv_id):
     if content and len(content) > 1000:
         content = content[:1000]
 
-    # ✅ Handle image upload
+    # ✅ Handle image upload — try ImgBB first, fall back to local disk
     filename = None
     if file and file.filename:
-        ext = file.filename.rsplit(".", 1)[-1].lower()
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(filepath)
+        from utils.imgbb import upload_file_to_imgbb
+        imgbb_url = upload_file_to_imgbb(file)
+        if imgbb_url:
+            filename = imgbb_url  # full URL stored in DB
+        else:
+            ext = file.filename.rsplit(".", 1)[-1].lower()
+            filename = f"{uuid.uuid4().hex}.{ext}"
+            upload_folder = _chat_upload_folder()
+            os.makedirs(upload_folder, exist_ok=True)
+            file.seek(0)
+            file.save(os.path.join(upload_folder, filename))
 
     # ✅ UPDATED: pass filename
     msg = send_message(conv_id, user_id, content, filename)

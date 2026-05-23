@@ -52,6 +52,16 @@ def create_app():
 
     init_db()
 
+    # ── Jinja2 globals ───────────────────────────────────────────────────
+    def image_src(value, subfolder="items"):
+        """Resolve stored image value (ImgBB URL, data URI, or filename) to src URL."""
+        if not value:
+            return ""
+        if value.startswith("http") or value.startswith("data:"):
+            return value
+        return f"/static/uploads/{subfolder}/{value}"
+    app.jinja_env.globals["image_src"] = image_src
+
     # ── Global template context ───────────────────────────────────────────
     from flask import session as _session
     @app.context_processor
@@ -102,11 +112,11 @@ def create_app():
         if os.path.isfile(os.path.join(tmp_path, filename)):
             return send_from_directory(tmp_path, filename, mimetype=mime)
 
-        # Check 2: chat images are saved to /tmp/chat_uploads/ by chat_controller
+        # Check 2: chat images — check both new path and legacy /tmp/chat_uploads
         if subfolder == "chat":
-            chat_tmp = "/tmp/chat_uploads"
-            if os.path.isfile(os.path.join(chat_tmp, filename)):
-                return send_from_directory(chat_tmp, filename, mimetype=mime)
+            for chat_tmp in ["/tmp/uploads/chat", "/tmp/chat_uploads"]:
+                if os.path.isfile(os.path.join(chat_tmp, filename)):
+                    return send_from_directory(chat_tmp, filename, mimetype=mime)
 
         # Check 3: real static folder (seed/fixture images shipped with repo)
         static_path = os.path.join(app.root_path, "static", "uploads", subfolder)

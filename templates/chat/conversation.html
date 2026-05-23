@@ -434,7 +434,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
            class="conv-item {% if c.id == conv.id %}active{% endif %}">
           <div class="conv-avatar">
             {% if c.other_pic and c.other_pic_status == 'approved' %}
-              <img src="{{ '/static/uploads/profiles/' ~ c.other_pic }}" alt="" />
+              <img src="{{ image_src(c.other_pic, 'profiles') }}" alt="" />
             {% else %}
               {% if c.other_role == 'admin' %}🛡️{% else %}👤{% endif %}
             {% endif %}
@@ -464,7 +464,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
       <a href="{{ url_for('chat.inbox') }}" class="chat-back-btn">‹</a>
       <div class="chat-header-avatar">
         {% if other_user.profile_picture and other_user.profile_pic_status == 'approved' %}
-          <img src="{% if other_user.profile_picture.startswith('data:') %}{{ other_user.profile_picture }}{% else %}{{ '/static/uploads/profiles/' ~ other_user.profile_picture }}{% endif %}" alt="{{ other_user.full_name }}" />
+          <img src="{{ image_src(other_user.profile_picture, 'profiles') }}" alt="{{ other_user.full_name }}" onerror="this.style.display='none';this.parentElement.textContent='👤'" />
         {% else %}
           {% if other_user.role == 'admin' %}🛡️{% else %}👤{% endif %}
         {% endif %}
@@ -509,7 +509,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
             {% if not is_mine %}
             <div class="msg-avatar">
               {% if msg.sender_pic and msg.sender_pic_status == 'approved' %}
-                <img src="{% if msg.sender_pic.startswith('data:') %}{{ msg.sender_pic }}{% else %}{{ '/static/uploads/profiles/' ~ msg.sender_pic }}{% endif %}" />
+                <img src="{{ image_src(msg.sender_pic, 'profiles') }}" onerror="this.style.display='none';this.parentElement.textContent='👤'" />
               {% else %}
                 {% if msg.sender_role == 'admin' %}🛡️{% else %}👤{% endif %}
               {% endif %}
@@ -532,8 +532,9 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                 {% else %}
                   {% if msg.image_filename %}
                   <div class="msg-attachment-img">
-                    <img src="{{ '/static/uploads/chat/' ~ msg.image_filename }}"
-                         alt="image" onclick="openLightbox(this.src)" />
+                    <img src="{{ image_src(msg.image_filename, 'chat') }}"
+                         alt="image" onclick="openLightbox(this.src)"
+                         onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div style=\'padding:.5rem;color:#94a3b8;font-size:.8rem;\'>📷 Image unavailable</div>')" />
                   </div>
                   {% endif %}
                   {% if msg.content %}
@@ -813,7 +814,7 @@ function appendMessage(msg, type, isPending = false) {
   let attachHtml = '';
   if (msg.image) {
     const src = msg.image.startsWith('http') ? msg.image : CHAT_BASE + msg.image;
-    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" onclick="openLightbox(this.src)" /></div>`;
+    attachHtml = `<div class="msg-attachment-img"><img src="${src}" alt="image" onclick="openLightbox(this.src)" onerror="this.style.display='none'" /></div>`;
   }
 
   const contentHtml = msg.content

@@ -60,7 +60,7 @@
   {% for claim in claims %}
   <div class="claim-card status-{{ claim.status }}">
     {% if claim.item_image %}
-    <img src="{{ '/static/uploads/items/' ~ claim.item_image }}"
+    <img src="{{ image_src(claim.item_image, 'items') }}"
          alt="{{ claim.item_name }}" style="width:100%;height:140px;object-fit:cover;" loading="lazy" onerror="this.style.display='none'"/>
     {% endif %}
     <div class="claim-card-body">
