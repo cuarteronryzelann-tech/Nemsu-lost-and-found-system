@@ -16,6 +16,7 @@ Optimization changes:
 import os
 import sqlite3
 import threading
+import time
 from config import Config
 
 TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL", "").strip()
@@ -46,14 +47,22 @@ def _get_local_conn():
     return conn
 
 
-def get_connection():
+def get_connection(retries: int = 3, backoff: float = 0.5):
     if USE_TURSO:
         import libsql_experimental as libsql
-        conn = libsql.connect(
-            database=TURSO_DATABASE_URL,
-            auth_token=TURSO_AUTH_TOKEN,
-        )
-        return TursoConnection(conn)
+        last_err = None
+        for attempt in range(retries):
+            try:
+                conn = libsql.connect(
+                    database=TURSO_DATABASE_URL,
+                    auth_token=TURSO_AUTH_TOKEN,
+                )
+                return TursoConnection(conn)
+            except Exception as e:
+                last_err = e
+                if attempt < retries - 1:
+                    time.sleep(backoff * (2 ** attempt))  # 0.5s, 1s, 2s
+        raise RuntimeError(f"Turso DB error after {retries} attempts: {last_err}") from last_err
     return _LocalConnection(_get_local_conn())
 
 
@@ -200,17 +209,37 @@ class TursoRow:
 # Schema init
 # ---------------------------------------------------------------------------
 
+_db_initialized = False
+_db_init_lock = threading.Lock()
+
+
 def init_db():
+    """Initialize the database schema.
+
+    On Vercel (serverless), every cold start imports app.py and calls this.
+    The module-level ``_db_initialized`` flag ensures the schema migration
+    only runs *once* per Python process, preventing a burst of concurrent
+    Turso connections that exhausts the free-tier connection limit.
+
+    Set SKIP_INIT_DB=1 to skip entirely (e.g. if you run migrations
+    separately in a one-off script).
+    """
+    global _db_initialized
     if SKIP_INIT_DB:
         return
-
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        _init_schema(cursor)
-        conn.commit()
-    finally:
-        conn.close()
+    if _db_initialized:
+        return
+    with _db_init_lock:
+        if _db_initialized:
+            return
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            _init_schema(cursor)
+            conn.commit()
+        finally:
+            conn.close()
+        _db_initialized = True
 
 
 def _init_schema(cursor):

@@ -18,7 +18,6 @@ import os
 import mimetypes
 from flask import Flask, request as flask_request
 from config import Config
-from models.database import init_db
 from controllers.auth_controller import auth_bp
 from controllers.admin_controller import admin_bp
 from controllers.user_controller import user_bp
@@ -50,7 +49,18 @@ def create_app():
     except ImportError:
         pass  # optional — app works fine without it
 
-    init_db()
+    # ── Deferred DB init ─────────────────────────────────────────────────
+    # On Vercel, app.py is imported once per cold start (module-level
+    # ``app = create_app()``).  Running init_db() here fires a Turso
+    # connection immediately on every cold start.  When many functions
+    # spin up concurrently, that bursts past the free-tier connection
+    # limit.  Moving it into before_request means it runs exactly once
+    # per *process* (guarded by the _db_initialized flag in database.py)
+    # and only after the runtime is fully ready.
+    @app.before_request
+    def _lazy_init_db():
+        from models.database import init_db
+        init_db()
 
     # ── Jinja2 globals ───────────────────────────────────────────────────
     def image_src(value, subfolder="items"):
