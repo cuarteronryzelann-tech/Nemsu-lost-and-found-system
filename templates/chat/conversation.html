@@ -415,6 +415,62 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 
 
 
+/* ── Linked Item Card ── */
+.linked-item-card {
+  display: flex; align-items: center; gap: .85rem;
+  margin: .6rem .75rem .35rem;
+  background: #fff; border: 1.5px solid #bfdbfe;
+  border-radius: 14px; padding: .7rem .85rem;
+  box-shadow: 0 2px 8px rgba(26,86,219,.08);
+  flex-shrink: 0;
+}
+.lic-img-wrap {
+  width: 56px; height: 56px; border-radius: 10px;
+  overflow: hidden; flex-shrink: 0; background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #e2e8f0;
+}
+.lic-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lic-no-img { font-size: 1.6rem; }
+.lic-body { flex: 1; min-width: 0; }
+.lic-name {
+  font-weight: 700; font-size: .88rem; color: #1a56db;
+  text-decoration: none; display: block; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-bottom: .25rem;
+}
+.lic-name:hover { text-decoration: underline; }
+.lic-meta { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .3rem; }
+.lic-type {
+  font-size: .62rem; font-weight: 800; text-transform: uppercase;
+  padding: .15rem .45rem; border-radius: 999px; color: #fff;
+}
+.lic-type-lost { background: #ef4444; }
+.lic-type-found { background: #10b981; }
+.lic-location { font-size: .74rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lic-status-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.lic-status {
+  font-size: .72rem; font-weight: 700; padding: .2rem .55rem;
+  border-radius: 999px; white-space: nowrap;
+}
+.lic-status-listed  { background: #dbeafe; color: #1e40af; }
+.lic-status-claimed { background: #fef9c3; color: #854d0e; }
+.lic-status-returned { background: #dcfce7; color: #166534; }
+.lic-owner-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.lic-btn {
+  border: none; border-radius: 8px; padding: .28rem .65rem;
+  font-size: .72rem; font-weight: 700; cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.lic-btn-found  { background: #10b981; color: #fff; }
+.lic-btn-found:hover  { background: #059669; }
+.lic-btn-reopen { background: #e0e7ff; color: #3730a3; }
+.lic-btn-reopen:hover { background: #c7d2fe; }
+@media (max-width: 480px) {
+  .linked-item-card { gap: .6rem; padding: .6rem .7rem; margin: .5rem .5rem .25rem; }
+  .lic-img-wrap { width: 46px; height: 46px; }
+  .lic-name { font-size: .82rem; }
+}
+
 /* ── Toast notification ── */
 #chat-toast {
   position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%);
@@ -491,10 +547,54 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
           <span id="headerOnlineLabel">Checking…</span>
         </div>
       </div>
-      {% if conv.item_id %}
+      {% if linked_item %}
+      <a href="{{ url_for('item.item_detail', item_id=linked_item.id) }}" class="chat-item-ref-badge" style="text-decoration:none;">
+        📦 {{ linked_item.name }}
+      </a>
+      {% elif conv.item_id %}
       <span class="chat-item-ref-badge">📦 Item #{{ conv.item_id }}</span>
       {% endif %}
     </div>
+
+    <!-- Linked Item Card -->
+    {% if linked_item %}
+    {% set is_owner = linked_item.user_id == current_user_id %}
+    <div class="linked-item-card" id="linkedItemCard">
+      <div class="lic-img-wrap">
+        {% if linked_item.image_filename %}
+        <img src="{{ image_src(linked_item.image_filename, 'items') }}" alt="{{ linked_item.name }}" onerror="this.style.display='none'" />
+        {% else %}
+        <div class="lic-no-img">📦</div>
+        {% endif %}
+      </div>
+      <div class="lic-body">
+        <a href="{{ url_for('item.item_detail', item_id=linked_item.id) }}" class="lic-name">{{ linked_item.name }}</a>
+        <div class="lic-meta">
+          <span class="lic-type lic-type-{{ linked_item.type | lower }}">{{ linked_item.type | upper }}</span>
+          <span class="lic-location">📍 {{ linked_item.location }}</span>
+        </div>
+        <div class="lic-status-row">
+          <span class="lic-status lic-status-{{ linked_item.status | lower }}" id="licStatusBadge">
+            {% if linked_item.status == 'listed' %}🔵 Listed
+            {% elif linked_item.status == 'claimed' %}🟡 Claimed
+            {% elif linked_item.status == 'returned' %}🟢 Returned / Found
+            {% else %}{{ linked_item.status }}
+            {% endif %}
+          </span>
+          {% if is_owner %}
+          <div class="lic-owner-actions" id="licOwnerActions">
+            {% if linked_item.status != 'returned' %}
+            <button class="lic-btn lic-btn-found" onclick="updateItemStatus('returned')">✅ Mark as Found</button>
+            {% endif %}
+            {% if linked_item.status != 'listed' %}
+            <button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Messages -->
     <div class="messages-container" id="messages-container">
@@ -963,6 +1063,42 @@ function openLightbox(src) {
 function closeLightbox() {
   document.getElementById('imgLightbox').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+// ── Item status update ──
+const ITEM_STATUS_URL = "{{ url_for('chat.update_item_status_from_chat', conv_id=conv.id) }}";
+
+async function updateItemStatus(newStatus) {
+  try {
+    const res  = await fetch(ITEM_STATUS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Update status badge text
+      const badge = document.getElementById('licStatusBadge');
+      if (badge) {
+        const labels = { listed: '🔵 Listed', claimed: '🟡 Claimed', returned: '🟢 Returned / Found' };
+        badge.textContent = labels[data.status] || data.status;
+        badge.className = `lic-status lic-status-${data.status}`;
+      }
+      // Rebuild owner action buttons
+      const actions = document.getElementById('licOwnerActions');
+      if (actions) {
+        let html = '';
+        if (data.status !== 'returned') html += `<button class="lic-btn lic-btn-found" onclick="updateItemStatus('returned')">✅ Mark as Found</button>`;
+        if (data.status !== 'listed')   html += `<button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>`;
+        actions.innerHTML = html;
+      }
+      showToast('Item status updated!', 'info');
+    } else {
+      showToast(data.error || 'Could not update status.', 'error');
+    }
+  } catch(e) {
+    showToast('Network error. Please try again.', 'error');
+  }
 }
 
 // ── Init ──

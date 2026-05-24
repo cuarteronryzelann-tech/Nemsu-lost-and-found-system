@@ -21,6 +21,7 @@ from models.chat_model import (
     delete_message
 )
 from models.user_model import get_user_by_id, get_all_users
+from models.item_model import get_item_by_id, update_item_status, _item_by_id_cache
 from models.notification_model import add_notification
 from utils.gmail_notify import send_chat_notification
 import os
@@ -115,12 +116,16 @@ def conversation(conv_id):
     mark_messages_read(conv_id, user_id)
     conversations = get_user_conversations(user_id)
 
+    # Fetch linked item if any
+    linked_item = get_item_by_id(conv["item_id"]) if conv.get("item_id") else None
+
     return render_template("chat/conversation.html",
                            conv=conv,
                            other_user=other_user,
                            messages=messages,
                            conversations=conversations,
-                           current_user_id=user_id)
+                           current_user_id=user_id,
+                           linked_item=linked_item)
 
 
 from werkzeug.utils import secure_filename
@@ -381,3 +386,37 @@ def delete_msg(conv_id, msg_id):
     if success:
         return jsonify({"ok": True})
     return jsonify({"ok": False, "error": "Message not found or not yours"}), 403
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Update item status from chat (owner only)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.route("/<int:conv_id>/item-status", methods=["POST"])
+@login_required
+def update_item_status_from_chat(conv_id):
+    user_id = session["user"]["id"]
+    conv = get_conversation_by_id(conv_id)
+
+    if not conv:
+        return jsonify({"ok": False, "error": "Conversation not found"}), 404
+    if conv["user1_id"] != user_id and conv["user2_id"] != user_id:
+        return jsonify({"ok": False, "error": "Access denied"}), 403
+    if not conv.get("item_id"):
+        return jsonify({"ok": False, "error": "No item linked"}), 400
+
+    item = get_item_by_id(conv["item_id"])
+    if not item:
+        return jsonify({"ok": False, "error": "Item not found"}), 404
+    if item["user_id"] != user_id:
+        return jsonify({"ok": False, "error": "Only the item owner can update status"}), 403
+
+    data = request.get_json(silent=True) or {}
+    new_status = data.get("status")
+    if new_status not in ("listed", "claimed", "returned"):
+        return jsonify({"ok": False, "error": "Invalid status"}), 400
+
+    update_item_status(conv["item_id"], new_status)
+    # Bust the item cache so next fetch sees the new status
+    _item_by_id_cache.pop(conv["item_id"], None)
+
+    return jsonify({"ok": True, "status": new_status})

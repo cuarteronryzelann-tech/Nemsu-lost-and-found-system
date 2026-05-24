@@ -29,6 +29,20 @@ def get_or_create_conversation(user_a: int, user_b: int, item_id: int = None) ->
     conn = get_connection()
     cursor = conn.cursor()
 
+    # If item_id is given, look for an existing conv for this specific item first
+    if item_id:
+        cursor.execute("""
+            SELECT * FROM conversations
+            WHERE user1_id = ? AND user2_id = ? AND item_id = ?
+        """, (u1, u2, item_id))
+        row = cursor.fetchone()
+        if row:
+            conv = dict(row)
+            conn.close()
+            _conv_cache[conv["id"]] = (conv, time.time())
+            return conv
+
+    # Fall back to any existing conv between these two users (no item filter)
     cursor.execute("""
         SELECT * FROM conversations WHERE user1_id = ? AND user2_id = ?
     """, (u1, u2))
@@ -36,6 +50,14 @@ def get_or_create_conversation(user_a: int, user_b: int, item_id: int = None) ->
 
     if row:
         conv = dict(row)
+        # If an item_id was supplied and the existing conv doesn't have one, patch it
+        if item_id and not conv.get("item_id"):
+            cursor.execute(
+                "UPDATE conversations SET item_id = ? WHERE id = ?",
+                (item_id, conv["id"])
+            )
+            conn.commit()
+            conv["item_id"] = item_id
         conn.close()
         _conv_cache[conv["id"]] = (conv, time.time())
         return conv
