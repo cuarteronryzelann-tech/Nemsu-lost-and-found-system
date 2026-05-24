@@ -341,7 +341,8 @@
           {% if conv.other_pic and conv.other_pic_status == 'approved' %}
             <img src="{{ image_src(conv.other_pic, 'profiles') }}"
                  alt="{{ conv.other_name }}"
-                 onerror="this.style.display='none';this.parentElement.innerHTML='{% if conv.other_role == \'admin\' %}🛡️{% else %}👤{% endif %}'" />
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+            <span style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.4rem;">{{ '🛡️' if conv.other_role == 'admin' else '👤' }}</span>
           {% else %}
             {% if conv.other_role == 'admin' %}🛡️{% else %}👤{% endif %}
           {% endif %}
