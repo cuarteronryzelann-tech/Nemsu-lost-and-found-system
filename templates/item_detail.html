@@ -48,6 +48,101 @@
 }
 .report-trigger-btn:hover { background:#fef2f2;border-color:#fca5a5; }
 
+/* ── I Found This Modal ── */
+.found-modal-overlay {
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+    z-index:9998;align-items:center;justify-content:center;padding:1rem;
+}
+.found-modal-overlay.active { display:flex; }
+.found-modal-box {
+    background:#fff;border-radius:20px;padding:0;
+    max-width:560px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.22);
+    max-height:90vh;overflow-y:auto;
+}
+.found-modal-header {
+    background:linear-gradient(135deg,#16a34a,#15803d);
+    border-radius:20px 20px 0 0;padding:1.4rem 1.5rem 1.2rem;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;
+}
+.found-modal-header h3 { margin:0;color:#fff;font-size:1.15rem;font-weight:800; }
+.found-modal-header p  { margin:.3rem 0 0;color:rgba(255,255,255,.8);font-size:.82rem; }
+.found-modal-close {
+    background:rgba(255,255,255,.2);border:none;color:#fff;
+    border-radius:50%;width:32px;height:32px;font-size:1.1rem;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;transition:background .15s;
+}
+.found-modal-close:hover { background:rgba(255,255,255,.35); }
+.found-modal-body { padding:1.4rem 1.5rem 1.5rem; }
+
+.fm-group { margin-bottom:1.1rem; }
+.fm-group label {
+    display:block;font-size:.82rem;font-weight:700;
+    color:#374151;margin-bottom:.4rem;
+}
+.fm-group label .req { color:#ef4444;margin-left:.15rem; }
+.fm-group input,
+.fm-group select,
+.fm-group textarea {
+    width:100%;box-sizing:border-box;
+    border:1.5px solid #e2e8f0;border-radius:10px;
+    padding:.6rem .85rem;font-size:.88rem;font-family:inherit;
+    transition:border-color .15s;background:#fff;
+}
+.fm-group input:focus,
+.fm-group select:focus,
+.fm-group textarea:focus {
+    outline:none;border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.12);
+}
+.fm-group textarea { resize:vertical;min-height:80px; }
+.fm-row { display:grid;grid-template-columns:1fr 1fr;gap:.75rem; }
+@media(max-width:480px){ .fm-row { grid-template-columns:1fr; } }
+
+/* Map inside modal */
+.fm-map-wrap {
+    border:1.5px solid #e2e8f0;border-radius:10px;
+    overflow:hidden;margin-top:.4rem;position:relative;z-index:0;isolation:isolate;
+}
+#fmMap { height:200px;width:100%;display:block; }
+.fm-map-hint { font-size:.74rem;color:#64748b;margin-top:.35rem; }
+.fm-use-loc-btn {
+    display:inline-flex;align-items:center;gap:.4rem;
+    background:#f0fdf4;border:1.5px solid #86efac;color:#16a34a;
+    border-radius:8px;padding:.38rem .85rem;font-size:.78rem;
+    font-weight:700;cursor:pointer;margin-top:.5rem;transition:background .15s;
+}
+.fm-use-loc-btn:hover { background:#dcfce7; }
+
+/* Image upload mini */
+.fm-img-area {
+    border:2px dashed #d1d5db;border-radius:10px;
+    padding:.85rem 1rem;text-align:center;cursor:pointer;
+    transition:border-color .15s,background .15s;background:#fafafa;
+}
+.fm-img-area:hover { border-color:#16a34a;background:#f0fdf4; }
+.fm-img-area input[type=file] { display:none; }
+.fm-img-preview {
+    max-width:100%;max-height:140px;border-radius:8px;
+    margin-top:.5rem;display:none;object-fit:cover;
+}
+.fm-img-label { font-size:.81rem;color:#6b7280;pointer-events:none; }
+
+.fm-submit-btn {
+    width:100%;padding:.75rem;border:none;border-radius:12px;
+    background:linear-gradient(135deg,#16a34a,#15803d);
+    color:#fff;font-size:.95rem;font-weight:800;
+    cursor:pointer;transition:opacity .15s;margin-top:.4rem;
+}
+.fm-submit-btn:hover { opacity:.9; }
+.fm-submit-btn:disabled { opacity:.6;cursor:not-allowed; }
+
+.fm-item-ref {
+    background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
+    padding:.6rem .9rem;margin-bottom:1.1rem;
+    display:flex;align-items:center;gap:.6rem;font-size:.83rem;color:#166534;
+}
+.fm-item-ref strong { font-weight:800; }
+
 /* Report Modal */
 .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center; }
 .modal-overlay.active { display:flex; }
@@ -191,6 +286,13 @@
         </a>
         {% endif %}
 
+        {% if item.type == 'lost' and item.status in ('listed', 'approved') and session['user']['role'] == 'user' and item.reported_by != session['user']['id'] %}
+        <button class="btn btn-primary" onclick="openFoundModal()"
+                style="background:linear-gradient(135deg,#16a34a,#15803d);border-color:#15803d;">
+            🙋 I Found This!
+        </button>
+        {% endif %}
+
         {% if session['user']['role'] == 'user' and item.reported_by and item.reported_by != session['user']['id'] %}
         <a href="{{ url_for('chat.start_conversation', other_user_id=item.reported_by) }}?item_id={{ item.id }}"
            class="btn btn-outline" style="border-color:#1a56db;color:#1a56db;">
@@ -213,6 +315,116 @@
     </div>
 
 </div>
+
+<!-- ── "I Found This!" Modal ── -->
+{% if item.type == 'lost' and session['user']['role'] == 'user' and item.reported_by != session['user']['id'] %}
+<div class="found-modal-overlay" id="foundModal">
+  <div class="found-modal-box">
+
+    <div class="found-modal-header">
+      <div>
+        <h3>🙋 I Found This Item!</h3>
+        <p>Tell us the details — we'll connect you with the owner right away.</p>
+      </div>
+      <button class="found-modal-close" onclick="closeFoundModal()">✕</button>
+    </div>
+
+    <div class="found-modal-body">
+
+      <!-- Item reference banner -->
+      <div class="fm-item-ref">
+        📦 You're reporting that you found: <strong>{{ item.name }}</strong>
+      </div>
+
+      <form method="POST"
+            action="{{ url_for('item.i_found_it', item_id=item.id) }}"
+            enctype="multipart/form-data"
+            id="foundForm"
+            onsubmit="handleFoundSubmit(event)">
+
+        <!-- Step 1: What's the item -->
+        <div class="fm-group">
+          <label>Item Name <span class="req">*</span></label>
+          <input type="text" name="name"
+                 value="{{ item.name }}"
+                 placeholder="e.g., Black Wallet, iPhone 14…" required>
+        </div>
+
+        <div class="fm-row">
+          <div class="fm-group">
+            <label>Category</label>
+            <select name="category">
+              <option value="">-- Select --</option>
+              {% set cats = ['📱 Electronics','🎒 Bags & Backpacks','👕 Clothing & Accessories',
+                             '🔑 Keys','📄 Documents & IDs','💳 Wallets & Cards',
+                             '📚 Books & School Supplies','💻 Laptops & Tablets',
+                             '⌚ Watches & Jewelry','🔧 Tools & Equipment',
+                             '⚽ Sports & Recreation','💊 Medical Items','📦 Others'] %}
+              {% for c in cats %}
+              <option value="{{ c }}" {% if item.category == c %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fm-group">
+            <label>Time Found (optional)</label>
+            <input type="time" name="time_found">
+          </div>
+        </div>
+
+        <div class="fm-group">
+          <label>Description <small style="font-weight:400;color:#6b7280;">(color, brand, markings…)</small></label>
+          <textarea name="description"
+                    placeholder="Describe what you found so the owner can confirm it's theirs."></textarea>
+        </div>
+
+        <!-- Step 2: Where & when -->
+        <div class="fm-row">
+          <div class="fm-group">
+            <label>Where did you find it? <span class="req">*</span></label>
+            <input type="text" name="location" id="fmLocationText"
+                   placeholder="e.g., Library, CSC Building…" required>
+          </div>
+          <div class="fm-group">
+            <label>Date Found <span class="req">*</span></label>
+            <input type="date" name="date_reported" id="fmDate" required>
+          </div>
+        </div>
+
+        <!-- Map pin (optional) -->
+        <div class="fm-group">
+          <label>📍 Pin Exact Location <small style="font-weight:400;color:#6b7280;">(optional)</small></label>
+          <div class="fm-map-wrap">
+            <div id="fmMap"></div>
+          </div>
+          <button type="button" class="fm-use-loc-btn" onclick="fmUseMyLocation()">
+            📡 Use My Current Location
+          </button>
+          <div class="fm-map-hint" id="fmMapHint">Click the map to drop a pin, or use the button above.</div>
+          <input type="hidden" name="pickup_lat" id="fmPickupLat">
+          <input type="hidden" name="pickup_lng" id="fmPickupLng">
+          <input type="hidden" name="pickup_address" id="fmPickupAddress">
+        </div>
+
+        <!-- Step 3: Photo -->
+        <div class="fm-group">
+          <label>📷 Upload a Photo <small style="font-weight:400;color:#6b7280;">(optional but helpful)</small></label>
+          <div class="fm-img-area" onclick="document.getElementById('fmImage').click()">
+            <input type="file" name="item_image" id="fmImage"
+                   accept="image/*" onchange="fmPreviewImage(event)">
+            <div class="fm-img-label">📸 Click to upload a photo of the item</div>
+            <img id="fmImgPreview" class="fm-img-preview" alt="Preview">
+          </div>
+        </div>
+
+        <button type="submit" class="fm-submit-btn" id="fmSubmitBtn">
+          🚀 Submit & Open Chat with Owner
+        </button>
+
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- ── Report Modal ── -->
 <div class="modal-overlay" id="reportModal">
@@ -362,5 +574,110 @@ function closeReportModal() {
 document.getElementById('reportModal').addEventListener('click', function(e) {
     if (e.target === this) closeReportModal();
 });
+
+// ── "I Found This!" Modal ─────────────────────────────────────────────────────
+{% if item.type == 'lost' and session['user']['role'] == 'user' and item.reported_by != session['user']['id'] %}
+let _fmMap = null, _fmMarker = null, _fmMapReady = false;
+
+function openFoundModal() {
+    document.getElementById('foundModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    const dateEl = document.getElementById('fmDate');
+    if (dateEl && !dateEl.value) dateEl.value = today;
+    // Init map after modal is visible
+    setTimeout(_initFmMap, 120);
+}
+function closeFoundModal() {
+    document.getElementById('foundModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+document.getElementById('foundModal').addEventListener('click', function(e) {
+    if (e.target === this) closeFoundModal();
+});
+
+function _initFmMap() {
+    if (_fmMapReady || typeof L === 'undefined') return;
+    _fmMapReady = true;
+
+    // Default to NEMSU campus coords if no existing pin
+    const defLat = {{ item.pickup_lat if item.pickup_lat else 8.1578 }};
+    const defLng = {{ item.pickup_lng if item.pickup_lng else 126.0854 }};
+
+    _fmMap = L.map('fmMap', { zoomControl: true, scrollWheelZoom: false, tap: false })
+              .setView([defLat, defLng], 16);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(_fmMap);
+
+    _fmMap.on('click', function(e) { _placeFmPin(e.latlng.lat, e.latlng.lng); });
+}
+
+function _placeFmPin(lat, lng) {
+    if (_fmMarker) _fmMarker.remove();
+    const icon = L.divIcon({
+        html: '<div style="background:#16a34a;border:3px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>',
+        iconSize:[18,18], iconAnchor:[9,9], className:''
+    });
+    _fmMarker = L.marker([lat, lng], { icon }).addTo(_fmMap);
+    document.getElementById('fmPickupLat').value = lat.toFixed(7);
+    document.getElementById('fmPickupLng').value = lng.toFixed(7);
+
+    // Reverse-geocode for address
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+            const addr = d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            document.getElementById('fmPickupAddress').value = addr;
+            document.getElementById('fmMapHint').textContent = '📌 ' + addr;
+            // Also auto-fill location text if empty
+            const locEl = document.getElementById('fmLocationText');
+            if (locEl && !locEl.value) {
+                const short = (d.address && (d.address.building || d.address.road || d.address.suburb)) || addr.split(',')[0];
+                locEl.value = short;
+            }
+        })
+        .catch(() => {
+            document.getElementById('fmPickupAddress').value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        });
+}
+
+function fmUseMyLocation() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+    }
+    document.getElementById('fmMapHint').textContent = '📡 Getting your location…';
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            _fmMap.setView([lat, lng], 17);
+            _placeFmPin(lat, lng);
+        },
+        () => { document.getElementById('fmMapHint').textContent = '⚠️ Could not get location. Click the map to pin.'; }
+    );
+}
+
+function fmPreviewImage(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('fmImgPreview');
+    if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+function handleFoundSubmit(e) {
+    const btn = document.getElementById('fmSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Submitting…';
+    // Let the form submit normally — no preventDefault
+}
+{% endif %}
 </script>
 {% endblock %}
