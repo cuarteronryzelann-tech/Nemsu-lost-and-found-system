@@ -225,9 +225,10 @@
       .user-main .main-content { padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
       body:has(.chat-layout) .main-content { padding-bottom: 0 !important; }
       .nav-hamburger { display: none !important; }
-      /* Notification + chat bells stay in top-right on mobile */
-      .nav-icon-btn  { display: inline-flex !important; width: 40px; height: 40px; }
-      .nav-icon-btn svg { width: 20px; height: 20px; }
+      /* Only notification bell stays in top-right on mobile; chat is in bottom nav */
+      .nav-icon-btn  { display: none !important; }
+      #notifBell { display: inline-flex !important; width: 40px; height: 40px; }
+      #notifBell svg { width: 20px; height: 20px; }
       /* Hide text nav-links — bottom nav handles navigation */
       .nav-links { display: none !important; }
       /* Hide user name chip to save space */

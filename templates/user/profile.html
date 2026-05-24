@@ -728,6 +728,12 @@ input[type=file].hidden-input {
         <!-- <p style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.75rem;">
             <i class="fas fa-info-circle"></i> Max 5 MB. JPG, PNG, WebP accepted.
         </p> -->
+
+        <div style="text-align: center;">
+        <a href="{{ url_for('auth.logout') }}" class="logout-link">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
     </div>
 
     <!-- Account Info (read-only) -->
@@ -882,11 +888,11 @@ input[type=file].hidden-input {
         }
     </style>
 
-    <div style="text-align: center;">
+    <!-- <div style="text-align: center;">
         <a href="{{ url_for('auth.logout') }}" class="logout-link">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
-    </div>
+    </div> -->
 
 
     <!-- ═══════════ My Activity Tabs ═══════════ -->
