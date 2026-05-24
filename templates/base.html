@@ -430,6 +430,14 @@
           {% endif %}
         </a>
 
+        <a href="{{ url_for('user.my_items_history') }}" class="nav-link {% if request.endpoint == 'user.my_items_history' %}active{% endif %}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          History
+        </a>
+
         <a href="{{ url_for('user.profile') }}" class="nav-link">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>

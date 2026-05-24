@@ -264,3 +264,36 @@ def get_items_by_user(user_id: int, item_type: str = None) -> list:
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+def get_resolved_items_by_user(user_id: int) -> list:
+    """Return items posted by user that have been marked as returned/found (history)."""
+    conn   = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT i.*, u.full_name AS found_by_name
+        FROM items i
+        LEFT JOIN users u ON u.id = i.found_by
+        WHERE i.reported_by = ? AND i.status = 'returned'
+        ORDER BY i.found_at DESC, i.date_reported DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def mark_item_returned(item_id: int, found_by_user_id: int) -> bool:
+    """Mark a lost item as returned/found, recording who helped and when."""
+    from datetime import datetime
+    found_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    conn   = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE items SET status = 'returned', found_at = ?, found_by = ?
+        WHERE id = ?
+    """, (found_at, found_by_user_id, item_id))
+    conn.commit()
+    updated = cursor.rowcount > 0
+    conn.close()
+    _invalidate_item(item_id)
+    return updated

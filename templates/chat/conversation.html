@@ -1067,6 +1067,7 @@ function closeLightbox() {
 
 // ── Item status update ──
 const ITEM_STATUS_URL = "{{ url_for('chat.update_item_status_from_chat', conv_id=conv.id) }}";
+const HISTORY_URL     = "{{ url_for('user.my_items_history') }}";
 
 async function updateItemStatus(newStatus) {
   try {
@@ -1090,9 +1091,16 @@ async function updateItemStatus(newStatus) {
         let html = '';
         if (data.status !== 'returned') html += `<button class="lic-btn lic-btn-found" onclick="updateItemStatus('returned')">✅ Mark as Found</button>`;
         if (data.status !== 'listed')   html += `<button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>`;
+        if (data.status === 'returned') {
+          html += `<a href="${HISTORY_URL}" class="lic-btn" style="background:#f0fdf4;color:#166534;border:1px solid #86efac;text-decoration:none;">📋 View in History</a>`;
+        }
         actions.innerHTML = html;
       }
-      showToast('Item status updated!', 'info');
+      if (newStatus === 'returned') {
+        showToast('🎉 Item marked as found! It\'s been moved to your history and removed from the public feed.', 'success');
+      } else {
+        showToast('Item status updated!', 'info');
+      }
     } else {
       showToast(data.error || 'Could not update status.', 'error');
     }

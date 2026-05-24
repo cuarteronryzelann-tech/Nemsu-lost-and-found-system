@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}My Items History | NEMSU Lost &amp; Found{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page layout ── */
+.history-page { max-width: 820px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+.history-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+.history-header h1 {
+  font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0;
+  display: flex; align-items: center; gap: .5rem;
+}
+.history-header .subtitle { font-size: .82rem; color: #64748b; margin-top: .2rem; }
+.btn-back {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .45rem 1rem; border-radius: 8px; font-size: .83rem;
+  font-weight: 700; background: #f1f5f9; color: #1e293b;
+  text-decoration: none; border: 1px solid #e2e8f0; transition: background .15s;
+}
+.btn-back:hover { background: #e2e8f0; }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center; padding: 3.5rem 1rem;
+  background: #fff; border-radius: 16px;
+  border: 2px dashed #e2e8f0; color: #94a3b8;
+}
+.empty-state .icon { font-size: 2.8rem; margin-bottom: .75rem; }
+.empty-state h3 { font-size: 1.05rem; font-weight: 700; color: #64748b; margin: 0 0 .4rem; }
+.empty-state p { font-size: .85rem; margin: 0; }
+
+/* ── Item cards ── */
+.history-list { display: flex; flex-direction: column; gap: 1rem; }
+
+.history-card {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.08);
+  border-left: 4px solid #22c55e;
+  overflow: hidden; display: flex;
+  transition: box-shadow .2s;
+}
+.history-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+
+.history-card-img {
+  width: 110px; min-height: 110px; flex-shrink: 0;
+  background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.history-card-img img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.history-card-img .no-img {
+  font-size: 2rem; color: #cbd5e1;
+}
+
+.history-card-body {
+  flex: 1; padding: 1rem 1.1rem; min-width: 0;
+}
+
+.history-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: .5rem; margin-bottom: .5rem; flex-wrap: wrap;
+}
+.history-item-name {
+  font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 380px;
+}
+.badge-type {
+  font-size: .68rem; font-weight: 800; padding: .18rem .55rem;
+  border-radius: 999px; flex-shrink: 0; text-transform: uppercase;
+}
+.badge-type.lost  { background: #fee2e2; color: #991b1b; }
+.badge-type.found { background: #dbeafe; color: #1d4ed8; }
+
+.badge-resolved {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: #dcfce7; color: #166534; font-size: .72rem;
+  font-weight: 700; padding: .18rem .6rem; border-radius: 999px;
+}
+
+.history-meta {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .3rem .75rem;
+  font-size: .81rem; color: #64748b; margin-bottom: .75rem;
+}
+@media(max-width: 500px){ .history-meta { grid-template-columns: 1fr; } }
+.history-meta strong { color: #334155; }
+
+.history-resolver {
+  display: flex; align-items: center; gap: .5rem;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 8px; padding: .5rem .8rem;
+  font-size: .82rem; color: #166534; font-weight: 600;
+}
+.history-resolver .icon { font-size: 1rem; flex-shrink: 0; }
+
+.history-card-actions {
+  display: flex; gap: .5rem; flex-wrap: wrap;
+  margin-top: .75rem; padding-top: .65rem;
+  border-top: 1px solid #f1f5f9;
+}
+.btn-detail {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .38rem .85rem; border-radius: 8px; font-size: .8rem;
+  font-weight: 700; background: #1a56db; color: #fff;
+  text-decoration: none; transition: background .15s;
+}
+.btn-detail:hover { background: #1341a8; }
+.btn-chat {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .38rem .85rem; border-radius: 8px; font-size: .8rem;
+  font-weight: 700; background: #f1f5f9; color: #334155;
+  text-decoration: none; border: 1px solid #e2e8f0; transition: background .15s;
+}
+.btn-chat:hover { background: #e2e8f0; }
+
+/* ── Summary banner ── */
+.summary-banner {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac; border-radius: 12px;
+  padding: .9rem 1.2rem; margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: .75rem;
+  font-size: .88rem; color: #166534; font-weight: 600;
+}
+.summary-banner .icon { font-size: 1.5rem; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-page">
+
+  <!-- Header -->
+  <div class="history-header">
+    <div>
+      <h1>📋 My Items History</h1>
+      <div class="subtitle">Items you posted that have been successfully returned or found.</div>
+    </div>
+    <a href="{{ url_for('user.dashboard') }}" class="btn-back">← Back to Dashboard</a>
+  </div>
+
+  {% if resolved_items %}
+  <!-- Summary banner -->
+  <div class="summary-banner">
+    <span class="icon">🎉</span>
+    <span>
+      You have <strong>{{ resolved_items | length }}</strong>
+      resolved item{{ 's' if resolved_items | length != 1 else '' }}.
+      Great job connecting with the NEMSU community!
+    </span>
+  </div>
+
+  <!-- Cards -->
+  <div class="history-list">
+    {% for item in resolved_items %}
+    <div class="history-card">
+
+      <!-- Image -->
+      <div class="history-card-img">
+        {% if item.image_filename %}
+        <img src="{{ image_src(item.image_filename, 'items') }}"
+             alt="{{ item.name }}" onerror="this.style.display='none'" loading="lazy">
+        {% else %}
+        <div class="no-img">📦</div>
+        {% endif %}
+      </div>
+
+      <!-- Body -->
+      <div class="history-card-body">
+        <div class="history-card-header">
+          <h3 class="history-item-name">{{ item.name }}</h3>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
+            <span class="badge-type {{ item.type | lower }}">{{ item.type }}</span>
+            <span class="badge-resolved">✅ Resolved</span>
+          </div>
+        </div>
+
+        <div class="history-meta">
+          <div><strong>📍 Location:</strong> {{ item.location }}</div>
+          <div><strong>📂 Category:</strong> {{ item.category or '—' }}</div>
+          <div><strong>📅 Reported:</strong> {{ item.date_reported }}</div>
+          {% if item.found_at %}
+          <div><strong>🕐 Resolved on:</strong> {{ item.found_at[:10] }}</div>
+          {% endif %}
+        </div>
+
+        {% if item.found_by_name %}
+        <div class="history-resolver">
+          <span class="icon">🤝</span>
+          Returned with help from <strong>{{ item.found_by_name }}</strong>
+        </div>
+        {% endif %}
+
+        <div class="history-card-actions">
+          <a href="{{ url_for('item.item_detail', item_id=item.id) }}" class="btn-detail">
+            🔍 View Details
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="empty-state">
+    <div class="icon">📭</div>
+    <h3>No resolved items yet</h3>
+    <p>Items you've posted that get marked as <em>Found / Returned</em> will appear here as history.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

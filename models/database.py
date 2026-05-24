@@ -407,6 +407,8 @@ def _init_schema(cursor):
         ("pickup_lat",     "REAL"),
         ("pickup_lng",     "REAL"),
         ("pickup_address", "TEXT"),
+        ("found_at",       "TEXT"),   # timestamp when marked returned/found
+        ("found_by",       "INTEGER"),  # user_id of the person who returned it
     ])
 
     cursor.execute("""

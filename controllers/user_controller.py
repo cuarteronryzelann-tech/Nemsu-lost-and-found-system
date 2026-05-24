@@ -7,7 +7,7 @@ import uuid
 from flask import (Blueprint, render_template, redirect, url_for,
                    session, request, flash, current_app, jsonify)
 from functools import wraps
-from models.item_model import create_item, get_item_by_id, get_items_for_search, find_matching_items, get_items_by_user, update_item
+from models.item_model import create_item, get_item_by_id, get_items_for_search, find_matching_items, get_items_by_user, get_resolved_items_by_user, update_item
 from models.claim_model import (create_claim, get_claims_by_user,
                                 get_claims_for_finder, finder_respond_to_claim)
 from models.user_model import (update_user_profile, update_profile_picture,
@@ -1165,3 +1165,20 @@ def finder_respond_claim(claim_id):
 
         flash(f"❌ You rejected the claim for '{item_name}'. The claimant has been notified.", "warning")
         return redirect(url_for("user.finder_claims"))
+
+@user_bp.route("/my-items/history")
+@login_required
+def my_items_history():
+    """Show items the user posted that have been resolved (marked as returned/found)."""
+    user_id = session["user"]["id"]
+    user_profile = get_user_by_id(user_id) or {}
+    notifications = get_notifications(user_id, limit=10)
+    unread_count = get_unread_count(user_id)
+    resolved_items = get_resolved_items_by_user(user_id)
+    return render_template(
+        "user/my_items_history.html",
+        resolved_items=resolved_items,
+        user_profile=user_profile,
+        notifications=notifications,
+        unread_count=unread_count,
+    )

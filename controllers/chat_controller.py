@@ -21,7 +21,7 @@ from models.chat_model import (
     delete_message
 )
 from models.user_model import get_user_by_id, get_all_users
-from models.item_model import get_item_by_id, update_item_status, _item_by_id_cache
+from models.item_model import get_item_by_id, update_item_status, mark_item_returned, _item_by_id_cache
 from models.notification_model import add_notification
 from utils.gmail_notify import send_chat_notification
 import os
@@ -407,7 +407,7 @@ def update_item_status_from_chat(conv_id):
     item = get_item_by_id(conv["item_id"])
     if not item:
         return jsonify({"ok": False, "error": "Item not found"}), 404
-    if item["user_id"] != user_id:
+    if item["reported_by"] != user_id:
         return jsonify({"ok": False, "error": "Only the item owner can update status"}), 403
 
     data = request.get_json(silent=True) or {}
@@ -415,7 +415,22 @@ def update_item_status_from_chat(conv_id):
     if new_status not in ("listed", "claimed", "returned"):
         return jsonify({"ok": False, "error": "Invalid status"}), 400
 
-    update_item_status(conv["item_id"], new_status)
+    if new_status == "returned":
+        # Record who helped return it (the other participant in the chat)
+        other_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
+        mark_item_returned(conv["item_id"], found_by_user_id=other_id)
+
+        # Notify the other user
+        item_name = item.get("name", "the item")
+        add_notification(
+            user_id=other_id,
+            message=f"🎉 '{item_name}' has been marked as found! Thank you for helping.",
+            notif_type="success",
+            link=f"/chat/{conv_id}"
+        )
+    else:
+        update_item_status(conv["item_id"], new_status)
+
     # Bust the item cache so next fetch sees the new status
     _item_by_id_cache.pop(conv["item_id"], None)
 
