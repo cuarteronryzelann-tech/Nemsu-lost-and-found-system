@@ -69,7 +69,7 @@
     <div class="login-card">
 
         <!-- Institution Logo / Branding -->
-        <div class="login-logo"><img src="/static/img/logo.png" alt="NEMSU" style="width:48px;height:48px;border-radius:50%;object-fit:cover;"></div>
+        <div class="login-logo-wrap"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="NEMSU" class="login-logo-img"></div>
         <h1 class="login-title">NEMSU Lost &amp; Found</h1>
         <p class="login-subtitle">
             Sign in with your <strong>@nemsu.edu.ph</strong> Google account to continue.

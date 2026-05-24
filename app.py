@@ -155,6 +155,15 @@ def create_app():
         b"\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b"
     )
 
+    # ── Explicit static file serving (required on Vercel) ────────────────
+    # Vercel's Python runtime does NOT auto-serve the static/ directory.
+    # Without this, CSS/JS/images all 404 → unstyled pages.
+    @app.route("/static/<path:filepath>")
+    def _serve_static(filepath):
+        from flask import send_from_directory
+        static_dir = os.path.join(app.root_path, "static")
+        return send_from_directory(static_dir, filepath)
+
     @app.route("/static/uploads/chat/<filename>")
     def _serve_legacy_chat_image(filename):
         """Intercept legacy local-filename chat images before Flask's static handler 404s."""
