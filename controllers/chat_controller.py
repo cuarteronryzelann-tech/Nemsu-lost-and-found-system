@@ -264,8 +264,19 @@ def _poll_impl(conv_id):
     mark_messages_read(conv_id, user_id)
 
     # Other user's online status (active in last 2 min)
+    # Cache the user lookup for 10 s to avoid a DB hit on every poll tick
     other_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
-    other_user = get_user_by_id(other_id)
+    import time as _t
+    _now = _t.time()
+    _cache_key = f"poll_user_{other_id}"
+    if not hasattr(_poll_impl, "_user_cache"):
+        _poll_impl._user_cache = {}
+    _cached = _poll_impl._user_cache.get(_cache_key)
+    if _cached and (_now - _cached[1]) < 10:
+        other_user = _cached[0]
+    else:
+        other_user = get_user_by_id(other_id)
+        _poll_impl._user_cache[_cache_key] = (other_user, _now)
     other_online = False
     try:
         from datetime import datetime, timedelta

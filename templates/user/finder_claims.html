@@ -132,8 +132,13 @@
         {% if claim.confirmed_by_user %}<br>📦 The claimant has confirmed they received the item.{% endif %}
       </div>
       <div class="fc-actions">
+        {% if claim.pickup_location and claim.pickup_location.startswith('__conv_id:') %}
+        {% set _conv_id = claim.pickup_location[10:] %}
+        <a href="/chat/{{ _conv_id }}" class="btn-chat">💬 Open Chat</a>
+        {% else %}
         <a href="{{ url_for('chat.start_conversation', other_user_id=claim.claimant_user_id) }}?item_id={{ claim.item_id }}"
            class="btn-chat">💬 Open Chat</a>
+        {% endif %}
       </div>
 
       {% elif claim.status == 'rejected' %}

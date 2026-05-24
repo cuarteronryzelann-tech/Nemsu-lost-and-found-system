@@ -82,6 +82,11 @@
         ⏳ <strong>Waiting for Finder's Decision</strong> — The finder is reviewing your claim. You'll be notified once they respond.
       </div>
       {% endif %}
+      {% if claim.status == 'pending' %}
+      <div class="status-notice notice-pending">
+        ⏳ <strong>Pending Admin Review</strong> — An admin will review your claim soon.
+      </div>
+      {% endif %}
       {% if claim.status == 'accepted' %}
       <div class="status-notice notice-approved">
         ✅ <strong>Claim Accepted!</strong> The finder accepted your claim. Open the chat to arrange the meetup venue and pick up your item.
@@ -115,9 +120,16 @@
         <span class="confirmed-note">✅ You confirmed receiving this item</span>
         {% endif %}
         {% if claim.status == 'accepted' %}
+        {% if claim.pickup_location and claim.pickup_location.startswith('__conv_id:') %}
+        {% set _conv_id = claim.pickup_location[10:] %}
+        <a href="/chat/{{ _conv_id }}" class="btn-nav" style="text-decoration:none;">
+          💬 Open Chat with Finder
+        </a>
+        {% else %}
         <a href="{{ url_for('chat.inbox') }}" class="btn-nav" style="text-decoration:none;">
           💬 Chat with Finder
         </a>
+        {% endif %}
         {% endif %}
         {% if claim.status == 'approved' %}
         <button class="btn-nav" onclick="openNavModal('{{ claim.item_name | e }}','{{ claim.pickup_location | e }}')">

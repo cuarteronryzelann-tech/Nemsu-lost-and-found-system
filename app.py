@@ -87,14 +87,24 @@ def create_app():
 
     # ── Global template context ───────────────────────────────────────────
     from flask import session as _session
+    # Cache for finder_pending_count — avoids a DB round-trip on every page render
+    import time as _t
+    _finder_count_cache: dict = {}
+    _FINDER_COUNT_TTL = 20  # seconds
+
     @app.context_processor
     def inject_finder_pending_count():
-        """Provide pending claim count for nav badge on every page."""
+        """Provide pending claim count for nav badge on every page (cached 20 s)."""
         try:
             if "user" in _session:
+                uid = _session["user"]["id"]
+                entry = _finder_count_cache.get(uid)
+                if entry and (_t.time() - entry[1]) < _FINDER_COUNT_TTL:
+                    return {"finder_pending_count": entry[0]}
                 from models.claim_model import get_claims_for_finder
-                claims = get_claims_for_finder(_session["user"]["id"])
+                claims = get_claims_for_finder(uid)
                 count = sum(1 for c in claims if c.get("status") == "pending_finder")
+                _finder_count_cache[uid] = (count, _t.time())
                 return {"finder_pending_count": count}
         except Exception:
             pass

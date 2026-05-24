@@ -22,6 +22,25 @@ from utils.tim_sort import sort_by_date, sort_by_name, sort_by_category, sort_by
 
 user_bp = Blueprint("user", __name__, url_prefix="/user")
 
+# ─── Tiny in-process user cache to avoid a DB hit on EVERY request ───────────
+# login_required calls get_user_by_id() on every route — on Vercel this is one
+# extra Turso round-trip (≈50-150 ms) per request.  Cache for 30 s per user.
+import time as _time
+_user_cache: dict = {}  # {user_id: (user_dict, ts)}
+_USER_CACHE_TTL = 30    # seconds
+
+def _cached_get_user(user_id):
+    entry = _user_cache.get(user_id)
+    if entry and (_time.time() - entry[1]) < _USER_CACHE_TTL:
+        return entry[0]
+    user = get_user_by_id(user_id)
+    if user:
+        _user_cache[user_id] = (user, _time.time())
+    return user
+
+def _invalidate_user_cache(user_id):
+    _user_cache.pop(user_id, None)
+
 # In-memory live location store: {user_id: {"lat": float, "lng": float}}
 # For production, replace with Redis or a DB column.
 _location_store = {}
@@ -86,7 +105,7 @@ def login_required(f):
 
         # Guard: DB may have been wiped (Render free tier spins down and /tmp resets).
         # If the user record no longer exists, force them to log in again via Google.
-        user_profile = get_user_by_id(user_id) if user_id else None
+        user_profile = _cached_get_user(user_id) if user_id else None
         if not user_profile:
             session.clear()
             flash("Your session expired. Please sign in again.", "warning")
@@ -151,6 +170,7 @@ def register():
         )
 
         if updated:
+            _invalidate_user_cache(session["user"]["id"])
             user_data = dict(session["user"])
             user_data["is_registered"] = 1
             user_data["phone"]         = phone
@@ -1092,6 +1112,19 @@ def finder_respond_claim(claim_id):
         # Open/get a chat conversation between finder and claimant
         from models.chat_model import get_or_create_conversation, send_message
         conv = get_or_create_conversation(user_id, claimant_id, item_id=item_id)
+
+        # Store conv_id on the claim so claimant can link directly from My Claims
+        try:
+            from models.database import get_connection as _gc
+            _conn = _gc()
+            _conn.cursor().execute(
+                "UPDATE claims SET pickup_location = ? WHERE id = ?",
+                (f"__conv_id:{conv['id']}", claim_id)
+            )
+            _conn.commit()
+            _conn.close()
+        except Exception:
+            pass
 
         # Send an automatic opening message from the finder
         finder_name = session["user"]["full_name"]
