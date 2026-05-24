@@ -8,6 +8,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}NEMSU Lost & Found{% endblock %}</title>
+  <!-- Font Awesome — loaded once here, cached across all pages -->
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}" />
   <!-- Lucide icons (SVG icon system) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js" defer></script>
@@ -554,7 +557,7 @@
     {% endwith %}
 
     <main class="main-content">
-      {{ self.content() }}
+      {% block content %}{% endblock %}
     </main>
     {% if request.endpoint != 'chat.conversation' %}
     <footer class="footer"><p>&copy; 2024 NEMSU Lost &amp; Found System.</p></footer>
@@ -670,7 +673,7 @@
       {% endif %}
     {% endwith %}
     <main class="main-content">
-      {{ self.content() }}
+      {% block content_anon %}{% block content_logged_out %}{% endblock %}{% endblock %}
     </main>
   </div>
 {% endif %}
@@ -855,19 +858,38 @@ document.addEventListener('visibilitychange', function() {
 
 /* ── Connection status indicator ── */
 (function() {
-
   var wasOnline = true;
+  var statusEl = null, dotEl = null, textEl = null;
+
+  // Create the indicator bar on first need (lazy)
+  function _ensureBar() {
+    if (statusEl) return;
+    var bar = document.createElement('div');
+    bar.id = 'conn-status-bar';
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 12px;font-size:.78rem;font-weight:600;color:#fff;background:#ef4444;transform:translateY(-100%);transition:transform .3s ease;pointer-events:none;';
+    bar.innerHTML = '<span id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0;"></span><span id="conn-text">No connection…</span>';
+    document.body.appendChild(bar);
+    statusEl = bar;
+    dotEl  = document.getElementById('conn-dot');
+    textEl = document.getElementById('conn-text');
+  }
 
   function setOnline() {
     if (!wasOnline) {
-      if (statusEl) { statusEl.classList.add('visible'); dotEl.classList.add('online'); textEl.textContent = 'Back online'; }
-      setTimeout(function() { if(statusEl) statusEl.classList.remove('visible'); }, 2500);
+      _ensureBar();
+      statusEl.style.background = '#10b981';
+      textEl.textContent = 'Back online';
+      statusEl.style.transform = 'translateY(0)';
+      setTimeout(function() { if(statusEl) statusEl.style.transform = 'translateY(-100%)'; }, 2500);
       wasOnline = true;
     }
   }
   function setOffline() {
     if (wasOnline) {
-      if (statusEl) { statusEl.classList.add('visible'); dotEl.classList.remove('online'); textEl.textContent = 'No connection…'; }
+      _ensureBar();
+      statusEl.style.background = '#ef4444';
+      textEl.textContent = 'No connection…';
+      statusEl.style.transform = 'translateY(0)';
       wasOnline = false;
     }
   }

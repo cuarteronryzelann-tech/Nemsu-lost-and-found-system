@@ -12,35 +12,28 @@ def create_claim(item_id: int, claimant_id: int, student_id_text: str,
                  full_name_text: str, last_location: str) -> int:
     """
     Inserts a new claim request into the database.
-    The claim starts with status "pending" until an admin reviews it.
-
-    Args:
-        item_id         (int): ID of the item being claimed.
-        claimant_id     (int): User ID of the student submitting the claim.
-        student_id_text (str): Student ID as typed by the claimant (for verification).
-        full_name_text  (str): Full name as typed by the claimant (for verification).
-        last_location   (str): Where the student says the item was last located.
-
-    Returns:
-        int: The auto-generated claim ID of the inserted record.
+    The claim starts with status "pending_finder" until the finder reviews it.
     """
     conn = get_connection()
     cursor = conn.cursor()
-
-    # Disable FK enforcement to work around incorrect FK definition in live schema
-    # (item_id was mistakenly set to REFERENCES users(id) instead of items(id)).
-    cursor.execute("PRAGMA foreign_keys = OFF")
-    cursor.execute("""
-        INSERT INTO claims (item_id, claimant_id, student_id_text,
-                            full_name_text, last_location, status)
-        VALUES (?, ?, ?, ?, ?, 'pending_finder')
-    """, (item_id, claimant_id, student_id_text, full_name_text, last_location))
-    cursor.execute("PRAGMA foreign_keys = ON")
-
-    conn.commit()
-    claim_id = cursor.lastrowid
-    conn.close()
-    return claim_id
+    try:
+        # Disable FK enforcement to work around incorrect FK definition in live schema
+        cursor.execute("PRAGMA foreign_keys = OFF")
+        cursor.execute("""
+            INSERT INTO claims (item_id, claimant_id, student_id_text,
+                                full_name_text, last_location, status, created_at)
+            VALUES (?, ?, ?, ?, ?, 'pending_finder', datetime('now'))
+        """, (item_id, claimant_id, student_id_text, full_name_text, last_location))
+        conn.commit()
+        claim_id = cursor.lastrowid
+        return claim_id
+    finally:
+        # Always re-enable FK enforcement even if an exception occurs
+        try:
+            cursor.execute("PRAGMA foreign_keys = ON")
+        except Exception:
+            pass
+        conn.close()
 
 
 def get_all_claims(status: str = None) -> list[dict]:
@@ -183,7 +176,7 @@ def confirm_claim_by_user(claim_id: int, claimant_id: int) -> bool:
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE claims SET confirmed_by_user = 1
-        WHERE id = ? AND claimant_id = ? AND status = 'approved'
+        WHERE id = ? AND claimant_id = ? AND status IN ('approved', 'accepted')
     """, (claim_id, claimant_id))
     conn.commit()
     updated = cursor.rowcount > 0

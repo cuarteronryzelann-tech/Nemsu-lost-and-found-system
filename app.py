@@ -90,14 +90,18 @@ def create_app():
     # Cache for finder_pending_count — avoids a DB round-trip on every page render
     import time as _t
     _finder_count_cache: dict = {}
-    _FINDER_COUNT_TTL = 20  # seconds
+    _FINDER_COUNT_TTL = 60  # seconds — raised from 20s, count only changes when claims are created/responded
 
     @app.context_processor
     def inject_finder_pending_count():
-        """Provide pending claim count for nav badge on every page (cached 20 s)."""
+        """Provide pending claim count for nav badge on every page (cached 60 s)."""
         try:
             if "user" in _session:
-                uid = _session["user"]["id"]
+                user = _session["user"]
+                # Skip for admins — they don't have the finder_claims nav item
+                if user.get("role") == "admin":
+                    return {"finder_pending_count": 0}
+                uid = user["id"]
                 entry = _finder_count_cache.get(uid)
                 if entry and (_t.time() - entry[1]) < _FINDER_COUNT_TTL:
                     return {"finder_pending_count": entry[0]}
