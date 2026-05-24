@@ -804,6 +804,84 @@ input[type=file].hidden-input {
         </form>
     </div>
 
+    <!-- ═══════════ Mobile Quick Links (visible on mobile only) ═══════════ -->
+    <div class="profile-card mobile-quick-links" style="display:none;">
+        <h3><i class="fas fa-th-large"></i> Quick Links</h3>
+        <div class="quick-links-grid">
+            <a href="{{ url_for('user.finder_claims') }}" class="quick-link-item" style="position:relative;">
+                <div class="quick-link-icon" style="background:#eff6ff;">
+                    <i class="fas fa-inbox" style="color:#2563eb;"></i>
+                </div>
+                <span>Claim Requests</span>
+                {% if finder_pending_count > 0 %}
+                <span class="ql-badge">{{ finder_pending_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{{ url_for('user.report_lost') }}" class="quick-link-item">
+                <div class="quick-link-icon" style="background:#fef9c3;">
+                    <i class="fas fa-exclamation-circle" style="color:#d97706;"></i>
+                </div>
+                <span>Report Lost</span>
+            </a>
+            <a href="{{ url_for('user.report_found') }}" class="quick-link-item">
+                <div class="quick-link-icon" style="background:#f0fdf4;">
+                    <i class="fas fa-box-open" style="color:#16a34a;"></i>
+                </div>
+                <span>Report Found</span>
+            </a>
+        </div>
+    </div>
+    <style>
+        @media (max-width: 640px) {
+            .mobile-quick-links { display: block !important; }
+        }
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: .85rem;
+        }
+        .quick-link-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .55rem;
+            padding: 1rem .75rem;
+            border-radius: 14px;
+            border: 1.5px solid #f1f5f9;
+            background: #f8fafc;
+            text-decoration: none;
+            color: #1e293b;
+            font-size: .82rem;
+            font-weight: 600;
+            text-align: center;
+            transition: border-color .15s, box-shadow .15s;
+            position: relative;
+        }
+        .quick-link-item:hover {
+            border-color: #2563eb;
+            box-shadow: 0 2px 10px rgba(37,99,235,.10);
+            text-decoration: none;
+            color: #1e293b;
+        }
+        .quick-link-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .ql-badge {
+            position: absolute;
+            top: 8px; right: 8px;
+            min-width: 18px; height: 18px;
+            background: #ef4444; color: #fff;
+            border-radius: 999px;
+            font-size: .6rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 4px;
+            border: 2px solid #fff;
+        }
+    </style>
+
     <div style="text-align: center;">
         <a href="{{ url_for('auth.logout') }}" class="logout-link">
             <i class="fas fa-sign-out-alt"></i> Logout
@@ -871,41 +949,129 @@ input[type=file].hidden-input {
             {% endif %}
         </div>
 
-        <!-- My Claims Panel -->
+        <!-- My Claims Panel — full-featured -->
         <div class="tab-panel" id="panel-claims">
+            <style>
+                .claim-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;border-left:4px solid #94a3b8;transition:box-shadow .2s;margin-bottom:.85rem;}
+                .claim-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.12);}
+                .claim-card.status-approved{border-left-color:#057a55;}
+                .claim-card.status-accepted{border-left-color:#057a55;}
+                .claim-card.status-pending,.claim-card.status-pending_finder{border-left-color:#c27803;}
+                .claim-card.status-denied,.claim-card.status-rejected{border-left-color:#c81e1e;}
+                .claim-card-img{width:100%;height:130px;object-fit:cover;}
+                .claim-card-body{padding:.9rem 1rem;}
+                .claim-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem;}
+                .claim-item-name{font-size:.97rem;font-weight:700;color:#1e293b;margin:0;}
+                .claim-details{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .6rem;margin-bottom:.75rem;font-size:.8rem;}
+                .detail-group label{color:#94a3b8;font-size:.7rem;font-weight:700;text-transform:uppercase;display:block;}
+                .detail-group span{color:#1e293b;}
+                .status-notice{border-radius:8px;padding:.65rem .9rem;margin-bottom:.7rem;font-size:.84rem;line-height:1.5;}
+                .notice-pending{background:#fdf6b2;color:#92400e;border:1px solid #fde68a;}
+                .notice-approved{background:#def7ec;color:#03543f;border:1px solid #6ee7b7;}
+                .notice-denied{background:#fde8e8;color:#9b1c1c;border:1px solid #fca5a5;}
+                .pickup-location{font-weight:700;margin-top:.3rem;font-size:.87rem;color:#1a56db;}
+                .claim-actions{display:flex;gap:.45rem;flex-wrap:wrap;padding-top:.6rem;border-top:1px solid #f1f5f9;margin-top:.4rem;}
+                .btn-claim-action{border:none;border-radius:8px;padding:.42rem .9rem;font-size:.8rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;}
+                .btn-view{background:#eff6ff;color:#1a56db;border:1.5px solid #bfdbfe;}
+                .btn-view:hover{background:#1a56db;color:#fff;text-decoration:none;}
+                .btn-confirm-rcv{background:#057a55;color:#fff;}
+                .btn-confirm-rcv:hover{background:#046045;}
+                .btn-chat{background:#1a56db;color:#fff;}
+                .btn-chat:hover{background:#1341a8;text-decoration:none;color:#fff;}
+                .btn-navigate{background:#7c3aed;color:#fff;}
+                .btn-navigate:hover{background:#6d28d9;}
+                .confirmed-note{display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:700;color:#057a55;background:#def7ec;border-radius:8px;padding:.35rem .7rem;}
+                .badge-confirmed{background:#def7ec;color:#057a55;font-size:.68rem;font-weight:700;padding:.12rem .5rem;border-radius:999px;border:1px solid #6ee7b7;}
+            </style>
+
             {% if my_claims %}
-            <div class="claims-stack">
+            <div class="claims-list-full">
                 {% for claim in my_claims %}
-                <div class="claim-row">
-                    <div class="cr-img">
-                        {% if claim.item_image %}
-                        <img src="{{ image_src(claim.item_image, 'items') }}"
-                             alt="{{ claim.item_name }}"
-                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDkwIDkwIj4KICA8cmVjdCB3aWR0aD0iOTAiIGhlaWdodD0iOTAiIGZpbGw9IiNmMWY1ZjkiLz4KICA8cmVjdCB4PSIyOCIgeT0iMjUiIHdpZHRoPSIzNCIgaGVpZ2h0PSIyOCIgcng9IjQiIGZpbGw9IiNjYmQ1ZTEiLz4KICA8Y2lyY2xlIGN4PSI0NSIgY3k9IjM1IiByPSI3IiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHBhdGggZD0iTTI4IDUzIGwxNi0xMiAxMCA5IDgtNiA4IDkiIGZpbGw9IiM5NGEzYjgiLz4KICA8dGV4dCB4PSI0NSIgeT0iNzQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5NGEzYjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4='" loading="lazy" decoding="async">
-                        {% else %}
-                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDkwIDkwIj4KICA8cmVjdCB3aWR0aD0iOTAiIGhlaWdodD0iOTAiIGZpbGw9IiNmMWY1ZjkiLz4KICA8cmVjdCB4PSIyOCIgeT0iMjUiIHdpZHRoPSIzNCIgaGVpZ2h0PSIyOCIgcng9IjQiIGZpbGw9IiNjYmQ1ZTEiLz4KICA8Y2lyY2xlIGN4PSI0NSIgY3k9IjM1IiByPSI3IiBmaWxsPSIjOTRhM2I4Ii8+CiAgPHBhdGggZD0iTTI4IDUzIGwxNi0xMiAxMCA5IDgtNiA4IDkiIGZpbGw9IiM5NGEzYjgiLz4KICA8dGV4dCB4PSI0NSIgeT0iNzQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjgiIGZpbGw9IiM5NGEzYjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4=" alt="">
-                        {% endif %}
-                    </div>
-                    <div class="cr-body">
-                        <div class="cr-name">{{ claim.item_name }}</div>
-                        <p class="cr-meta"><i class="fas fa-map-marker-alt"></i> {{ claim.item_location }}</p>
-                        <p class="cr-meta"><i class="fas fa-tag"></i> {{ claim.item_category }}</p>
-                        <p class="cr-meta"><i class="fas fa-clock"></i> {{ claim.created_at }}</p>
-                        {% if claim.status == 'approved' %}
-                        <span class="cr-status cs-approved"><i class="fas fa-check-circle"></i> Approved</span>
+                <div class="claim-card status-{{ claim.status }}">
+                    {% if claim.item_image %}
+                    <img src="{{ image_src(claim.item_image, 'items') }}"
+                         alt="{{ claim.item_name }}" class="claim-card-img"
+                         loading="lazy" onerror="this.style.display='none'"/>
+                    {% endif %}
+                    <div class="claim-card-body">
+                        <div class="claim-header">
+                            <h4 class="claim-item-name">{{ claim.item_name }}</h4>
+                            <div style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;">
+                                {% if claim.status == 'approved' %}
+                                <span class="cr-status cs-approved"><i class="fas fa-check-circle"></i> Approved</span>
+                                {% elif claim.status == 'accepted' %}
+                                <span class="cr-status cs-approved"><i class="fas fa-check-circle"></i> Accepted</span>
+                                {% elif claim.status in ('pending', 'pending_finder') %}
+                                <span class="cr-status cs-pending"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                {% elif claim.status == 'denied' %}
+                                <span class="cr-status cs-denied"><i class="fas fa-times-circle"></i> Denied</span>
+                                {% elif claim.status == 'rejected' %}
+                                <span class="cr-status cs-denied"><i class="fas fa-times-circle"></i> Rejected</span>
+                                {% endif %}
+                                {% if claim.confirmed_by_user %}<span class="badge-confirmed">✅ Confirmed</span>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="claim-details">
+                            <div class="detail-group"><label>Category</label><span>{{ claim.item_category or '—' }}</span></div>
+                            <div class="detail-group"><label>Location</label><span>{{ claim.item_location }}</span></div>
+                            <div class="detail-group"><label>Your Note</label><span>{{ claim.last_location or '—' }}</span></div>
+                            <div class="detail-group"><label>Submitted</label><span>{{ claim.created_at[:10] if claim.created_at else 'N/A' }}</span></div>
+                        </div>
+
+                        {% if claim.status == 'pending_finder' %}
+                        <div class="status-notice notice-pending">⏳ <strong>Waiting for Finder's Decision</strong> — The finder is reviewing your claim. You'll be notified once they respond.</div>
                         {% elif claim.status == 'pending' %}
-                        <span class="cr-status cs-pending"><i class="fas fa-hourglass-half"></i> Pending</span>
-                        {% else %}
-                        <span class="cr-status cs-denied"><i class="fas fa-times-circle"></i> Denied</span>
+                        <div class="status-notice notice-pending">⏳ <strong>Pending Admin Review</strong> — An admin will review your claim soon.</div>
+                        {% elif claim.status == 'accepted' %}
+                        <div class="status-notice notice-approved">
+                            ✅ <strong>Claim Accepted!</strong> The finder accepted your claim. Open the chat to arrange the meetup venue and pick up your item.
+                            {% if claim.pickup_location %}<div class="pickup-location">📍 Pickup point: {{ claim.pickup_location }}</div>{% endif %}
+                        </div>
+                        {% elif claim.status == 'approved' %}
+                        <div class="status-notice notice-approved">
+                            ✅ <strong>Claim Approved!</strong> Please chat with the finder to arrange where to pick up the item. Bring your valid student ID.
+                            {% if claim.pickup_location %}<div class="pickup-location">📍 Pickup point: {{ claim.pickup_location }}</div>{% endif %}
+                        </div>
+                        {% elif claim.status == 'denied' %}
+                        <div class="status-notice notice-denied">❌ Your claim was not approved by admin. Contact admin for assistance.</div>
+                        {% elif claim.status == 'rejected' %}
+                        <div class="status-notice notice-denied">❌ The finder rejected your claim. Contact admin if you believe this is an error.</div>
                         {% endif %}
-                        <div class="cr-actions">
-                            <a href="{{ url_for('item.item_detail', item_id=claim.item_id) }}" class="btn-ic2" style="margin:0;flex:1">
-                                <i class="fas fa-eye"></i> View
+
+                        <div class="claim-actions">
+                            <!-- View Item -->
+                            <a href="{{ url_for('item.item_detail', item_id=claim.item_id) }}" class="btn-claim-action btn-view">
+                                <i class="fas fa-eye"></i> View Item
                             </a>
+
+                            <!-- Confirm received -->
+                            {% if claim.status in ('approved', 'accepted') and not claim.confirmed_by_user %}
+                            <form method="POST" action="{{ url_for('user.confirm_claim', claim_id=claim.id) }}"
+                                  onsubmit="return confirm('Confirm you have physically received this item?');" style="margin:0;">
+                                <button type="submit" class="btn-claim-action btn-confirm-rcv">✅ Confirm Received</button>
+                            </form>
+                            {% endif %}
+
+                            {% if claim.confirmed_by_user %}
+                            <span class="confirmed-note">✅ You confirmed receiving this item</span>
+                            {% endif %}
+
+                            <!-- Chat with finder -->
+                            {% if claim.status == 'accepted' %}
+                                {% if claim.pickup_location and claim.pickup_location.startswith('__conv_id:') %}
+                                {% set _conv_id = claim.pickup_location[10:] %}
+                                <a href="/chat/{{ _conv_id }}" class="btn-claim-action btn-chat" style="text-decoration:none;">💬 Chat with Finder</a>
+                                {% else %}
+                                <a href="{{ url_for('chat.inbox') }}" class="btn-claim-action btn-chat" style="text-decoration:none;">💬 Chat with Finder</a>
+                                {% endif %}
+                            {% endif %}
+
+                            <!-- Navigate to pickup -->
                             {% if claim.status == 'approved' %}
-                            <button class="btn-ic2 btn-track" style="margin:0;flex:1;border:2px solid"
-                                    onclick="openLiveMap({{ claim.item_id }}, {{ claim.id }}, '{{ claim.item_name | e }}')">
-                                <i class="fas fa-map-marker-alt"></i> Live Track
+                            <button class="btn-claim-action btn-navigate"
+                                    onclick="openNavModal('{{ claim.item_name | e }}','{{ claim.pickup_location | e }}')">
+                                🗺️ Navigate
                             </button>
                             {% endif %}
                         </div>
@@ -917,11 +1083,30 @@ input[type=file].hidden-input {
             <div class="empty-tab">
                 <i class="fas fa-clipboard-list"></i>
                 <p>You haven't claimed any items yet.</p>
+                <a href="{{ url_for('user.search_items') }}" style="display:inline-block;margin-top:.75rem;padding:.45rem 1.1rem;background:#1a56db;color:#fff;border-radius:8px;font-size:.85rem;font-weight:700;text-decoration:none;">Browse Found Items</a>
             </div>
             {% endif %}
         </div>
     </div>
 
+</div>
+
+<!-- GPS Navigation Modal (for My Claims → Navigate to Pickup) -->
+<div id="navModalOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;width:92vw;max-width:640px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,.3);">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:1rem;font-weight:700;">🗺️ Navigate to Pickup</h3>
+      <button onclick="closeNavModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#64748b;">✕</button>
+    </div>
+    <div id="navMap" style="flex:1;height:300px;min-height:260px;"></div>
+    <div style="padding:.85rem 1.25rem;display:flex;align-items:center;gap:.75rem;border-top:1px solid #f1f5f9;flex-wrap:wrap;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.75rem;color:#64748b;margin-bottom:.2rem;">Pickup Location</div>
+        <div id="navPickupAddr" style="font-weight:700;color:#1e293b;font-size:.88rem;"></div>
+      </div>
+      <button onclick="openInMaps()" style="background:#1a56db;color:#fff;border:none;border-radius:9px;padding:.5rem 1rem;font-size:.83rem;font-weight:700;cursor:pointer;white-space:nowrap;">📍 Open in Maps</button>
+    </div>
+  </div>
 </div>
 
 <!-- Image Modal -->
@@ -1276,5 +1461,38 @@ function doTrack(){
 }
 function haversine(a,b,c,d){const R=6371,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 document.getElementById('mapModalOverlay').addEventListener('click',function(e){if(e.target===this)closeLiveMap();});
+
+/* ── GPS Navigation Modal (Claim → Navigate to Pickup) ── */
+var _navMap=null,_navWatchId=null,_navDestLat=null,_navDestLng=null,_navPickupAddr='';
+function openNavModal(itemName, pickupAddr){
+  _navPickupAddr = pickupAddr;
+  document.getElementById('navPickupAddr').textContent = pickupAddr;
+  var overlay = document.getElementById('navModalOverlay');
+  overlay.style.display = 'flex';
+  setTimeout(function(){
+    if(!_navMap){
+      _navMap = L.map('navMap').setView([9.0820,125.9960],15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(_navMap);
+    } else { _navMap.invalidateSize(); }
+    if(navigator.geolocation){
+      if(_navWatchId) navigator.geolocation.clearWatch(_navWatchId);
+      _navWatchId = navigator.geolocation.watchPosition(function(pos){
+        var uLat=pos.coords.latitude, uLng=pos.coords.longitude;
+        if(window._navUserMarker) _navMap.removeLayer(window._navUserMarker);
+        window._navUserMarker = L.circleMarker([uLat,uLng],{radius:9,fillColor:'#1a56db',color:'#fff',weight:2,fillOpacity:1})
+          .addTo(_navMap).bindPopup('📍 You are here');
+        _navMap.setView([uLat,uLng],16);
+      },function(){},{enableHighAccuracy:true});
+    }
+  },200);
+}
+function closeNavModal(){
+  document.getElementById('navModalOverlay').style.display='none';
+  if(_navWatchId){ navigator.geolocation.clearWatch(_navWatchId); _navWatchId=null; }
+}
+function openInMaps(){
+  window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(_navPickupAddr),'_blank');
+}
+document.getElementById('navModalOverlay').addEventListener('click',function(e){ if(e.target===this) closeNavModal(); });
 </script>
 {% endblock %}
