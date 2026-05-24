@@ -483,8 +483,9 @@ def mark_notifications_read():
 
 
 @user_bp.route("/notifications/count")
-@login_required
 def notifications_count():
+    if "user" not in session:
+        return jsonify({"error": "unauthenticated"}), 401
     count = get_unread_count(session["user"]["id"])
     return jsonify({"count": count})
 
@@ -1033,8 +1034,9 @@ def confirm_claim(claim_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @user_bp.route("/heartbeat", methods=["POST"])
-@login_required
 def heartbeat():
+    if "user" not in session:
+        return jsonify({"error": "unauthenticated"}), 401
     from models.user_model import set_user_online, update_last_active
     user_id = session["user"]["id"]
     set_user_online(user_id, True)

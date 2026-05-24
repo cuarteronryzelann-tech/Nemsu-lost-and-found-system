@@ -312,12 +312,13 @@ def _poll_impl(conv_id):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Unread count (AJAX)
+# Unread count (AJAX) — returns 401 when not logged in so JS stops polling
 # ─────────────────────────────────────────────────────────────────────────────
 
 @chat_bp.route("/unread-count")
-@login_required
 def unread_count():
+    if "user" not in session:
+        return jsonify({"error": "unauthenticated"}), 401
     try:
         count = get_total_unread(session["user"]["id"])
     except Exception:

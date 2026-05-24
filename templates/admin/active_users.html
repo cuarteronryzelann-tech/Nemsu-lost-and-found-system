@@ -659,26 +659,20 @@ function updateLastRefreshTime() {
     }
 }
 
-// Start auto-refresh counter
-let secondsUntilRefresh = 60;
+// Auto-refresh every 60 s — no 1-second ticker needed
 function startAutoRefreshCounter() {
     const refreshInfo = document.getElementById('lastRefresh');
-    if (!refreshInfo) return;
-    
-    setInterval(() => {
-        secondsUntilRefresh--;
-        if (secondsUntilRefresh <= 0) {
-            secondsUntilRefresh = 60;
-            refreshPage(false);
-        } else {
-            const countdown = refreshInfo.querySelector('.countdown');
-            if (countdown) {
-                countdown.textContent = secondsUntilRefresh;
-            } else {
-                refreshInfo.innerHTML += `<span class="countdown" style="margin-left: 0.5rem;">(auto-refresh in ${secondsUntilRefresh}s)</span>`;
-            }
-        }
-    }, 1000);
+    setTimeout(function autoRefreshLoop() {
+        refreshPage(false);
+        setTimeout(autoRefreshLoop, 60000);
+    }, 60000);
+    // Simple static label instead of live countdown
+    if (refreshInfo) {
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'margin-left:.5rem;opacity:.6;font-size:.8em;';
+        lbl.textContent = '(auto-refreshes every 60 s)';
+        refreshInfo.appendChild(lbl);
+    }
 }
 
 // Initialize

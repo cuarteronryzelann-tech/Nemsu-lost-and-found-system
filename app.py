@@ -115,12 +115,18 @@ def create_app():
         return {"finder_pending_count": 0}
 
     # ── Cache-Control for JSON API endpoints ─────────────────────────────
+    _NO_CACHE_PREFIXES = (
+        '/user/notifications', '/user/heartbeat', '/user/offline',
+        '/user/status/', '/user/api/', '/chat/unread', '/chat/',
+        '/user/finder-claims',
+    )
+
     @app.after_request
     def set_cache_headers(response):
-        if flask_request.path.startswith(('/user/notifications', '/chat/unread',
-                                           '/user/heartbeat', '/chat/')):
+        if flask_request.path.startswith(_NO_CACHE_PREFIXES):
             if response.content_type and 'json' in response.content_type:
-                response.headers['Cache-Control'] = 'no-store'
+                response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+                response.headers['Pragma'] = 'no-cache'
         return response
 
     @app.route("/healthz")

@@ -807,31 +807,92 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
   else refresh();
 
-  // Poll at different intervals — optimized to balance responsiveness and server load
-  setInterval(function() { refreshBadge(notifUrl, 'notifBadge', pn); }, 60000);
-  setInterval(function() { refreshBadge(chatUrl,  'chatBadge',  pc); }, 60000);
+  // ── Jitter: stagger the two polls by 5 s so they never fire simultaneously ──
+  // Also pause polling when the tab is hidden to save Vercel function calls.
+  var notifTimer = null, chatTimer = null;
+  var _stopped = false;
+
+  function _scheduleNotif() {
+    notifTimer = setTimeout(function loop() {
+      if (_stopped) return;
+      if (!document.hidden) refreshBadge(notifUrl, 'notifBadge', pn);
+      notifTimer = setTimeout(loop, 90000); // 90 s — notifications are low-urgency
+    }, 90000);
+  }
+  function _scheduleChat() {
+    chatTimer = setTimeout(function loop() {
+      if (_stopped) return;
+      if (!document.hidden) refreshBadge(chatUrl, 'chatBadge', pc);
+      chatTimer = setTimeout(loop, 60000);
+    }, 65000); // start 5 s after notif to stagger
+  }
+
+  // Stop all polling immediately if server returns 401/302 (logged out)
+  var _origRefreshBadge = refreshBadge;
+  refreshBadge = function(url, badgeId, prevRef) {
+    fetch(url)
+      .then(function(r) {
+        // 302 means we got redirected to /login — user is logged out; kill polling
+        if (r.redirected || r.status === 401 || r.status === 302) {
+          _stopped = true;
+          if (notifTimer) clearTimeout(notifTimer);
+          if (chatTimer)  clearTimeout(chatTimer);
+          return;
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(d) {
+        if (!d) return;
+        var c = Number(d.count) || 0;
+        updateBadge(badgeId, c);
+        if (badgeId === 'chatBadge')  updateMobBadge('mobChatBadge',  c);
+        if (badgeId === 'notifBadge') updateMobBadge('mobNotifBadge', c);
+        prevRef[0] = c;
+      }).catch(function(){});
+  };
+
+  _scheduleNotif();
+  _scheduleChat();
+
+  // Immediate refresh on tab focus (if tab was hidden > 30 s)
+  var _lastFocusRefresh = 0;
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && !_stopped) {
+      var now = Date.now();
+      if (now - _lastFocusRefresh > 30000) {
+        _lastFocusRefresh = now;
+        refresh();
+      }
+    }
+  });
 })();
 </script>
 {% endif %}
 
-{% if session.get('user') and session['user'].get('role') == 'admin' %}
-<script>
+{% if session.get('user') and session['user'].get('role') == 'admin' %}\n<script>
 /* Admin: refresh chat badge in sidebar */
 (function() {
   var chatUrl = "{{ url_for('chat.unread_count') }}";
-  var prevChat = 0;
+  var _stopped = false;
   function refresh() {
-    fetch(chatUrl).then(function(r){ return r.json(); }).then(function(d){
-      var c = Number(d.count) || 0;
-      var b = document.getElementById('adminChatBadge');
-      if (b) { b.textContent = c; b.style.display = c > 0 ? 'inline-flex' : 'none'; }
-      // Toast notifications removed
-      prevChat = c;
-    }).catch(function(){});
+    if (_stopped || document.hidden) return;
+    fetch(chatUrl)
+      .then(function(r) {
+        if (r.redirected || r.status === 401) { _stopped = true; return; }
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then(function(d) {
+        if (!d) return;
+        var c = Number(d.count) || 0;
+        var b = document.getElementById('adminChatBadge');
+        if (b) { b.textContent = c; b.style.display = c > 0 ? 'inline-flex' : 'none'; }
+      }).catch(function(){});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
   else refresh();
-  setInterval(refresh, 60000);
+  setInterval(refresh, 90000);
 })();
 </script>
 {% endif %}
@@ -842,19 +903,20 @@
 (function() {
   var hbUrl  = "{{ url_for('user.heartbeat') }}";
   var offUrl = "{{ url_for('user.go_offline') }}";
-  function beat() { fetch(hbUrl,{method:'POST',headers:{'Content-Type':'application/json'}}).catch(function(){}); }
+  var _stopped = false;
+  function beat() {
+    if (_stopped) return;
+    fetch(hbUrl,{method:'POST',headers:{'Content-Type':'application/json'}})
+      .then(function(r){ if(r.redirected||r.status===401) _stopped=true; })
+      .catch(function(){});
+  }
   beat(); setInterval(beat, 90000);
   window.addEventListener('beforeunload', function() { navigator.sendBeacon(offUrl); });
 })();
 {% endif %}
 
-/* ── Page visibility: refetch when user returns to tab ── */
-document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'visible') {
-    // nudge badge refreshes immediately on tab focus
-    document.dispatchEvent(new Event('rt-tab-focus'));
-  }
-});
+/* ── Page visibility: fire an immediate refresh when user returns to tab ── */
+/* (handled inline in each polling IIFE above — no extra global dispatch needed) */
 
 /* ── Connection status indicator ── */
 (function() {
