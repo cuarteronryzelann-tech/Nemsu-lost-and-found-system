@@ -160,6 +160,32 @@ def delete_profile_picture(user_id):
     _invalidate_all_users()
 
 
+def delete_user(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        # Delete child records first to respect foreign key constraints
+        cursor.execute("DELETE FROM messages WHERE sender_id = ?", (user_id,))
+        cursor.execute("DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = ? OR user2_id = ?)", (user_id, user_id))
+        cursor.execute("DELETE FROM conversations WHERE user1_id = ? OR user2_id = ?", (user_id, user_id))
+        cursor.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM reports WHERE reporter_id = ? OR reported_user_id = ? OR reviewed_by = ?", (user_id, user_id, user_id))
+        cursor.execute("DELETE FROM claims WHERE claimant_id = ?", (user_id,))
+        cursor.execute("DELETE FROM activity_log WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM items WHERE reported_by = ?", (user_id,))
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        deleted = cursor.rowcount > 0
+    except Exception:
+        conn.rollback()
+        deleted = False
+    finally:
+        conn.close()
+    _invalidate_user(user_id)
+    _invalidate_all_users()
+    return deleted
+
+
 def update_last_active(user_id):
     """
     Throttled: only hits the DB once every 30 s per user.
