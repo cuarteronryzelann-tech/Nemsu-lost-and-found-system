@@ -372,7 +372,7 @@
     {% endwith %}
 
     <main class="main-content">
-      {% block content %}{% endblock %}
+      {% block admin_content %}{% endblock %}
     </main>
     <footer class="footer"><p>&copy; 2024 NEMSU Lost &amp; Found System.</p></footer>
   </div>
@@ -673,7 +673,7 @@
       {% endif %}
     {% endwith %}
     <main class="main-content">
-      {% block content_anon %}{% block content_logged_out %}{% endblock %}{% endblock %}
+      {% block content_public %}{% endblock %}
     </main>
   </div>
 {% endif %}
@@ -870,7 +870,8 @@
 </script>
 {% endif %}
 
-{% if session.get('user') and session['user'].get('role') == 'admin' %}\n<script>
+{% if session.get('user') and session['user'].get('role') == 'admin' %}
+<script>
 /* Admin: refresh chat badge in sidebar */
 (function() {
   var chatUrl = "{{ url_for('chat.unread_count') }}";
