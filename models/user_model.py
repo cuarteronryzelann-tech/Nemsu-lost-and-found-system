@@ -26,6 +26,9 @@ _ALL_USERS_TTL = 30
 _last_active_written: dict = {}  # {user_id: timestamp}
 _LAST_ACTIVE_INTERVAL = 30       # only write DB every 30 s per user
 
+_last_online_written: dict = {}  # {user_id: (is_online, timestamp)}
+_ONLINE_INTERVAL = 60            # only write is_online to DB every 60 s
+
 
 def _invalidate_user(user_id):
     _user_by_id_cache.pop(user_id, None)
@@ -274,6 +277,16 @@ def get_user_growth():
 
 
 def set_user_online(user_id, is_online: bool):
+    """
+    Throttled: only writes to DB when the value changes or every 60 s.
+    Eliminates redundant DB writes on every heartbeat when status is unchanged.
+    """
+    now = time.time()
+    prev = _last_online_written.get(user_id)
+    # Skip if same state was written recently
+    if prev and prev[0] == is_online and (now - prev[1]) < _ONLINE_INTERVAL:
+        return
+    _last_online_written[user_id] = (is_online, now)
     try:
         conn = get_connection()
         cursor = conn.cursor()

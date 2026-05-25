@@ -24,12 +24,16 @@ _ITEM_BY_ID_TTL = 120          # 2 minutes — item details rarely change
 _all_items_cache = {"data": None, "ts": 0, "key": None}
 _ALL_ITEMS_TTL = 5             # short — admin views need freshness
 
+_user_items_cache: dict = {}   # {(user_id, item_type): (list, timestamp)}
+_USER_ITEMS_TTL = 30           # seconds — profile page refreshes are rare
+
 
 def _invalidate_items_cache():
     _items_cache["data"] = None
     _items_cache["ts"]   = 0
     _all_items_cache["data"] = None
     _all_items_cache["ts"]   = 0
+    _user_items_cache.clear()
 
 
 def _invalidate_item(item_id):
@@ -252,6 +256,12 @@ def get_items_per_month():
 
 
 def get_items_by_user(user_id: int, item_type: str = None) -> list:
+    cache_key = (user_id, item_type)
+    now = time.time()
+    cached = _user_items_cache.get(cache_key)
+    if cached and (now - cached[1]) < _USER_ITEMS_TTL:
+        return cached[0]
+
     conn   = get_connection()
     cursor = conn.cursor()
     query  = "SELECT * FROM items WHERE reported_by = ?"
@@ -263,7 +273,9 @@ def get_items_by_user(user_id: int, item_type: str = None) -> list:
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    result = [dict(row) for row in rows]
+    _user_items_cache[cache_key] = (result, now)
+    return result
 
 
 def get_resolved_items_by_user(user_id: int) -> list:

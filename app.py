@@ -90,7 +90,7 @@ def create_app():
     # Cache for finder_pending_count — avoids a DB round-trip on every page render
     import time as _t
     _finder_count_cache: dict = {}
-    _FINDER_COUNT_TTL = 60  # seconds — raised from 20s, count only changes when claims are created/responded
+    _FINDER_COUNT_TTL = 120  # seconds — claim status changes infrequently; 2 min is safe
 
     @app.context_processor
     def inject_finder_pending_count():

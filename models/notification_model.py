@@ -12,7 +12,7 @@ import time
 from models.database import get_connection
 
 _unread_cache = {}   # {user_id: (count, timestamp)}
-_UNREAD_TTL   = 15  # seconds — raised from 8 s
+_UNREAD_TTL   = 90  # seconds — matches the 90 s polling interval in base.html
 
 
 def _invalidate_unread(user_id):
@@ -123,3 +123,37 @@ def delete_all_notifications(user_id: int):
         _invalidate_unread(user_id)
     except Exception:
         pass
+
+
+def get_notifications_with_count(user_id: int, limit: int = 20):
+    """
+    Return (notifications_list, unread_count) in a single DB round-trip.
+    Use instead of calling get_notifications() + get_unread_count() separately.
+    Falls back to cached unread count if the query fails.
+    """
+    now = time.time()
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, user_id, message, type, link, is_read, created_at
+            FROM notifications
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        """, (user_id, limit))
+        rows = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT COUNT(*) as cnt FROM notifications
+            WHERE user_id = ? AND is_read = 0
+        """, (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        notifs = [dict(r) for r in rows]
+        count = row["cnt"] if row else 0
+        _unread_cache[user_id] = (count, now)
+        return notifs, count
+    except Exception:
+        return [], 0

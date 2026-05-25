@@ -14,7 +14,8 @@ from models.user_model import (update_user_profile, update_profile_picture,
                                 update_last_active, log_activity, get_user_by_id)
 from models.notification_model import (get_notifications, get_unread_count,
                                         mark_all_read, mark_read, add_notification,
-                                        delete_notification, delete_all_notifications)
+                                        delete_notification, delete_all_notifications,
+                                        get_notifications_with_count)
 # from utils.binary_search import collect_all_matches_by_name, binary_search_by_category  # replaced by DFS
 # from utils.quick_sort import sort_by_date, sort_by_name, sort_by_category, sort_by_status  # replaced by TimSort
 from utils.dfs_search import collect_all_matches_by_name, collect_all_matches_by_category
@@ -269,7 +270,7 @@ def upload_profile_picture():
 @login_required
 def profile():
     user_id = session["user"]["id"]
-    user_profile = get_user_by_id(user_id) or {}
+    user_profile = _cached_get_user(user_id) or {}
 
     if request.method == "POST":
         phone      = request.form.get("phone", "").strip()
@@ -324,9 +325,9 @@ def profile():
 @login_required
 def dashboard():
     user_id      = session["user"]["id"]
-    user_profile = get_user_by_id(user_id) or {}
-    notifications = get_notifications(user_id, limit=10)
-    unread_count  = get_unread_count(user_id)
+    user_profile = _cached_get_user(user_id) or {}
+    # Single DB round-trip for both notifications list and unread count
+    notifications, unread_count = get_notifications_with_count(user_id, limit=10)
     needs_pic     = user_profile.get("profile_pic_status", "none") not in ("pending", "approved")
 
     # ── Dashboard search params ───────────────────────────────────────────

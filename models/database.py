@@ -539,6 +539,7 @@ def _create_indexes(cursor):
         "CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email)",
         "CREATE INDEX IF NOT EXISTS idx_items_status_type  ON items(status, type)",
         "CREATE INDEX IF NOT EXISTS idx_notif_uid_read     ON notifications(user_id, is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_notif_uid_created   ON notifications(user_id, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_msg_conv_read      ON messages(conversation_id, is_read)",
         "CREATE INDEX IF NOT EXISTS idx_items_created_desc ON items(created_at DESC)",
     ]
