@@ -606,29 +606,21 @@ setTimeout(() => {
     });
 }, 5000);
 
-// Add animation to stats cards
-const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, index) => {
-        if (entry.isIntersecting) {
-            setTimeout(() => {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }, index * 100);
-            observer.unobserve(entry.target);
-        }
-    });
-}, observerOptions);
-
-document.querySelectorAll('.admin-stat, .quick-nav-card').forEach(card => {
+// Animate stats cards — use CSS animation so cards are never stuck invisible
+// (IntersectionObserver with rootMargin can leave cards at opacity:0 if they're
+//  already in the viewport when the observer is attached)
+document.querySelectorAll('.admin-stat, .quick-nav-card').forEach((card, index) => {
     card.style.opacity = '0';
     card.style.transform = 'translateY(20px)';
-    card.style.transition = 'all 0.5s ease';
-    observer.observe(card);
+    card.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+    // Use requestAnimationFrame so the browser has painted opacity:0 before we
+    // schedule the reveal — guaranteed to run even if already in viewport
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 80 + index * 80);
+    });
 });
 
 // Real-time stats update (optional)

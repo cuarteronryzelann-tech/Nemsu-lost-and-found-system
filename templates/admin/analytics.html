@@ -687,28 +687,17 @@ new Chart(document.getElementById('loadChart'), {
 });
 
 // Add animation to stats cards
-const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, index) => {
-        if (entry.isIntersecting) {
-            setTimeout(() => {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }, index * 50);
-            observer.unobserve(entry.target);
-        }
-    });
-}, observerOptions);
-
-document.querySelectorAll('.stat-card-sm, .chart-card, .complexity-card, .space-card').forEach(card => {
+// Animate cards — guaranteed reveal even when already in viewport
+document.querySelectorAll('.stat-card-sm, .chart-card, .complexity-card, .space-card').forEach((card, index) => {
     card.style.opacity = '0';
     card.style.transform = 'translateY(20px)';
-    card.style.transition = 'all 0.5s ease';
-    observer.observe(card);
+    card.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 80 + index * 80);
+    });
 });
 </script>
 {% endblock %}

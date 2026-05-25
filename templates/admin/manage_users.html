@@ -857,28 +857,17 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 });
 
 // Add animation to table rows
-const observerOptions = {
-    threshold: 0,
-    rootMargin: '0px 0px -50px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, index) => {
-        if (entry.isIntersecting) {
-            setTimeout(() => {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateX(0)';
-            }, index * 50);
-            observer.unobserve(entry.target);
-        }
-    });
-}, observerOptions);
-
+// Animate user rows — guaranteed reveal even when already in viewport
 document.querySelectorAll('.user-row').forEach((row, index) => {
     row.style.opacity = '0';
     row.style.transform = 'translateX(-20px)';
-    row.style.transition = `all 0.3s ease ${index * 0.05}s`;
-    observer.observe(row);
+    row.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            row.style.opacity = '1';
+            row.style.transform = 'translateX(0)';
+        }, 60 + index * 60);
+    });
 });
 
 // Close modal when clicking outside
