@@ -16,7 +16,7 @@
   border-left:4px solid #94a3b8;
   transition:box-shadow .2s;
   display:flex;
-  align-items:stretch;
+  flex-direction:column;
 }
 .fc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.12); }
 .fc-card.status-pending_finder { border-left-color:#c27803; }
@@ -24,7 +24,7 @@
 .fc-card.status-rejected        { border-left-color:#c81e1e; }
 
 .fc-img-wrap {
-  width:120px; min-height:120px; flex-shrink:0;
+  width:100%; height:180px; flex-shrink:0;
   background:#f1f5f9;
   display:flex; align-items:center; justify-content:center;
   overflow:hidden;
@@ -32,7 +32,10 @@
 .fc-img { width:100%; height:100%; object-fit:cover; display:block; }
 .fc-img-placeholder { font-size:2.5rem; color:#cbd5e1; }
 .fc-body { padding:1rem 1.1rem; flex:1; min-width:0; }
-@media(max-width:480px){ .fc-img-wrap{ width:90px; min-height:90px; } }
+
+@media(max-width:600px){
+  .fc-details { grid-template-columns:1fr; }
+}
 .fc-top  { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem; }
 .fc-item-name { font-size:1rem; font-weight:800; color:#1e293b; margin:0; }
 .fc-claimant  { font-size:.8rem; color:#64748b; margin:.15rem 0 0; }
@@ -41,7 +44,6 @@
   display:grid; grid-template-columns:1fr 1fr; gap:.35rem .75rem;
   font-size:.82rem; margin-bottom:.85rem;
 }
-@media(max-width:480px){ .fc-details{ grid-template-columns:1fr; } }
 .fc-details label { color:#94a3b8; font-size:.72rem; font-weight:700; text-transform:uppercase; display:block; }
 .fc-details span  { color:#1e293b; word-break:break-word; }
 
