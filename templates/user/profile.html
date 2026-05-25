@@ -906,6 +906,10 @@ input[type=file].hidden-input {
                 <i class="fas fa-clipboard-check"></i> My Claims
                 <span class="tab-count" id="tc-claims">{{ my_claims|default([])|length }}</span>
             </button>
+            <button class="tab-btn" onclick="switchTab('history')" id="tab-history">
+                <i class="fas fa-history"></i> History
+                <span class="tab-count" id="tc-history">{{ resolved_items|default([])|length }}</span>
+            </button>
         </div>
 
         <!-- My Reports Panel -->
@@ -1099,6 +1103,58 @@ input[type=file].hidden-input {
                 <i class="fas fa-clipboard-list"></i>
                 <p>You haven't claimed any items yet.</p>
                 <a href="{{ url_for('user.search_items') }}" style="display:inline-block;margin-top:.75rem;padding:.45rem 1.1rem;background:#1a56db;color:#fff;border-radius:8px;font-size:.85rem;font-weight:700;text-decoration:none;">Browse Found Items</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- History Panel -->
+        <div class="tab-panel" id="panel-history">
+            {% set resolved = resolved_items|default([]) %}
+            {% if resolved %}
+            <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.75rem;font-size:.88rem;color:#166534;font-weight:600;">
+                <span style="font-size:1.5rem;">🎉</span>
+                <span>You have <strong>{{ resolved|length }}</strong> resolved item{{ 's' if resolved|length != 1 else '' }}. Great job connecting with the NEMSU community!</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+                {% for item in resolved %}
+                <div style="background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.08);border-left:4px solid #22c55e;overflow:hidden;display:flex;transition:box-shadow .2s;">
+                    <div style="width:100px;min-height:100px;flex-shrink:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                        {% if item.image_filename %}
+                        <img src="{{ image_src(item.image_filename, 'items') }}" alt="{{ item.name }}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'" loading="lazy">
+                        {% else %}
+                        <span style="font-size:2rem;color:#cbd5e1;">📦</span>
+                        {% endif %}
+                    </div>
+                    <div style="flex:1;padding:.9rem 1rem;min-width:0;">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.45rem;flex-wrap:wrap;">
+                            <h4 style="font-size:.95rem;font-weight:800;color:#0f172a;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;">{{ item.name }}</h4>
+                            <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">
+                                <span style="font-size:.65rem;font-weight:800;padding:.15rem .5rem;border-radius:999px;text-transform:uppercase;{% if item.type|lower == 'lost' %}background:#fee2e2;color:#991b1b;{% else %}background:#dbeafe;color:#1d4ed8;{% endif %}">{{ item.type }}</span>
+                                <span style="display:inline-flex;align-items:center;gap:.3rem;background:#dcfce7;color:#166534;font-size:.7rem;font-weight:700;padding:.15rem .55rem;border-radius:999px;">✅ Resolved</span>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.25rem .6rem;font-size:.79rem;color:#64748b;margin-bottom:.6rem;">
+                            <div><strong style="color:#334155;">📍</strong> {{ item.location }}</div>
+                            <div><strong style="color:#334155;">📂</strong> {{ item.category or '—' }}</div>
+                            <div><strong style="color:#334155;">📅</strong> {{ item.date_reported }}</div>
+                            {% if item.found_at %}<div><strong style="color:#334155;">🕐</strong> {{ item.found_at[:10] }}</div>{% endif %}
+                        </div>
+                        {% if item.found_by_name %}
+                        <div style="display:flex;align-items:center;gap:.5rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.4rem .75rem;font-size:.8rem;color:#166534;font-weight:600;margin-bottom:.6rem;">
+                            🤝 Returned with help from <strong>{{ item.found_by_name }}</strong>
+                        </div>
+                        {% endif %}
+                        <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f1f5f9;">
+                            <a href="{{ url_for('item.item_detail', item_id=item.id) }}" style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .8rem;border-radius:8px;font-size:.78rem;font-weight:700;background:#1a56db;color:#fff;text-decoration:none;">🔍 View Details</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-tab">
+                <i class="fas fa-history"></i>
+                <p>No resolved items yet. Items you post that get marked as <em>Found / Returned</em> will appear here.</p>
             </div>
             {% endif %}
         </div>

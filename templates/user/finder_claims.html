@@ -15,14 +15,24 @@
   margin-bottom:1rem;
   border-left:4px solid #94a3b8;
   transition:box-shadow .2s;
+  display:flex;
+  align-items:stretch;
 }
 .fc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.12); }
 .fc-card.status-pending_finder { border-left-color:#c27803; }
 .fc-card.status-accepted        { border-left-color:#057a55; }
 .fc-card.status-rejected        { border-left-color:#c81e1e; }
 
-.fc-img { width:100%; height:140px; object-fit:cover; }
-.fc-body { padding:1rem 1.1rem; }
+.fc-img-wrap {
+  width:120px; min-height:120px; flex-shrink:0;
+  background:#f1f5f9;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+.fc-img { width:100%; height:100%; object-fit:cover; display:block; }
+.fc-img-placeholder { font-size:2.5rem; color:#cbd5e1; }
+.fc-body { padding:1rem 1.1rem; flex:1; min-width:0; }
+@media(max-width:480px){ .fc-img-wrap{ width:90px; min-height:90px; } }
 .fc-top  { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem; }
 .fc-item-name { font-size:1rem; font-weight:800; color:#1e293b; margin:0; }
 .fc-claimant  { font-size:.8rem; color:#64748b; margin:.15rem 0 0; }
@@ -79,13 +89,18 @@
 <div id="claimsList">
   {% for claim in claims %}
   <div class="fc-card status-{{ claim.status }}" data-status="{{ claim.status }}">
-    {% if claim.item_image %}
-    <img class="fc-img"
-         src="{{ image_src(claim.item_image, 'items') }}"
-         alt="{{ claim.item_name }}"
-         loading="lazy"
-         onerror="this.style.display='none'"/>
-    {% endif %}
+    <div class="fc-img-wrap">
+      {% if claim.item_image %}
+      <img class="fc-img"
+           src="{{ image_src(claim.item_image, 'items') }}"
+           alt="{{ claim.item_name }}"
+           loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <span class="fc-img-placeholder" style="display:none;">📦</span>
+      {% else %}
+      <span class="fc-img-placeholder">📦</span>
+      {% endif %}
+    </div>
 
     <div class="fc-body">
       <div class="fc-top">

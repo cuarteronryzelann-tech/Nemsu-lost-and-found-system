@@ -281,11 +281,13 @@ def profile():
             my_lost_items  = get_items_by_user(user_id, item_type="lost")
             my_found_items = get_items_by_user(user_id, item_type="found")
             my_claims      = get_claims_by_user(user_id)
+            resolved_items = get_resolved_items_by_user(user_id)
             return render_template("user/profile.html",
                                    user_profile=user_profile,
                                    my_lost_items=my_lost_items,
                                    my_found_items=my_found_items,
-                                   my_claims=my_claims)
+                                   my_claims=my_claims,
+                                   resolved_items=resolved_items)
 
         updated = update_user_profile(user_id=user_id, phone=phone,
                                       course=course, year_level=year_level)
@@ -305,11 +307,13 @@ def profile():
     my_lost_items  = get_items_by_user(user_id, item_type="lost")
     my_found_items = get_items_by_user(user_id, item_type="found")
     my_claims      = get_claims_by_user(user_id)
+    resolved_items = get_resolved_items_by_user(user_id)
     return render_template("user/profile.html",
                            user_profile=user_profile,
                            my_lost_items=my_lost_items,
                            my_found_items=my_found_items,
-                           my_claims=my_claims)
+                           my_claims=my_claims,
+                           resolved_items=resolved_items)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1128,19 +1132,17 @@ def finder_respond_claim(claim_id):
         except Exception:
             pass
 
-        # Send an automatic opening message from the finder
-        finder_name = session["user"]["full_name"]
-        # Only send auto-messages if this conversation is brand-new (no prior messages)
-        from models.chat_model import get_messages as _get_messages
-        existing_msgs = _get_messages(conv["id"], limit=5)
-        if not existing_msgs:
-            send_message(
-                conv_id=conv["id"],
-                sender_id=user_id,
-                content="",
-                msg_type="item_card",
-                ref_item_id=item_id,
-            )
+        # Send an automatic opening message from the finder.
+        # Always send both the item card and the handover text for THIS claim —
+        # the same conversation may be reused for multiple items, so we must
+        # never skip the messages just because the conversation already has content.
+        send_message(
+            conv_id=conv["id"],
+            sender_id=user_id,
+            content=f"📦 Here's the item: \"{item_name}\"",
+            msg_type="item_card",
+            ref_item_id=item_id,
+        )
         send_message(
             conv_id=conv["id"],
             sender_id=user_id,
