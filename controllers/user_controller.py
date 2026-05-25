@@ -1130,6 +1130,17 @@ def finder_respond_claim(claim_id):
 
         # Send an automatic opening message from the finder
         finder_name = session["user"]["full_name"]
+        # Only send auto-messages if this conversation is brand-new (no prior messages)
+        from models.chat_model import get_messages as _get_messages
+        existing_msgs = _get_messages(conv["id"], limit=5)
+        if not existing_msgs:
+            send_message(
+                conv_id=conv["id"],
+                sender_id=user_id,
+                content="",
+                msg_type="item_card",
+                ref_item_id=item_id,
+            )
         send_message(
             conv_id=conv["id"],
             sender_id=user_id,

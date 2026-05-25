@@ -604,7 +604,21 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 
     <!-- Linked Item Card -->
     {% if linked_item %}
-    {% set is_owner = linked_item.user_id == current_user_id %}
+    {% set is_owner = linked_item.reported_by == current_user_id %}
+    {% if linked_item.status == 'returned' %}
+    {# Item already resolved — show a minimal collapsed banner instead of the full card #}
+    <div class="linked-item-card" id="linkedItemCard" style="opacity:.65;pointer-events:none;padding:.5rem .85rem;">
+      <div class="lic-img-wrap" style="width:36px;height:36px;">
+        {% if linked_item.image_filename %}
+        <img src="{{ image_src(linked_item.image_filename, 'items') }}" alt="{{ linked_item.name }}" onerror="this.style.display='none'" />
+        {% else %}<div class="lic-no-img" style="font-size:1rem;">📦</div>{% endif %}
+      </div>
+      <div class="lic-body" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:.82rem;color:#166534;">✅ {{ linked_item.name }}</span>
+        <span class="lic-status lic-status-returned" style="font-size:.68rem;">🟢 Returned / Found</span>
+      </div>
+    </div>
+    {% else %}
     <div class="linked-item-card" id="linkedItemCard">
       <div class="lic-img-wrap">
         {% if linked_item.image_filename %}
@@ -649,6 +663,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
         </div>
       </div>
     </div>
+    {% endif %}
     {% endif %}
 
     <!-- Messages -->
@@ -1200,7 +1215,7 @@ function closeLightbox() {
 
 // ── Item status update ──
 const ITEM_STATUS_URL = "{{ url_for('chat.update_item_status_from_chat', conv_id=conv.id) }}";
-const IS_OWNER = {{ 'true' if linked_item and linked_item.user_id == current_user_id else 'false' if linked_item else 'null' }};
+const IS_OWNER = {{ 'true' if linked_item and linked_item.reported_by == current_user_id else 'false' if linked_item else 'null' }};
 const HISTORY_URL     = "{{ url_for('user.my_items_history') }}";
 
 async function updateItemStatus(newStatus) {
@@ -1212,6 +1227,28 @@ async function updateItemStatus(newStatus) {
     });
     const data = await res.json();
     if (data.ok) {
+      const card = document.getElementById('linkedItemCard');
+
+      // When marked returned — collapse the card to a minimal banner
+      if (data.status === 'returned' && card) {
+        const itemName = card.querySelector('.lic-name')?.textContent?.trim() || 'Item';
+        const imgEl    = card.querySelector('.lic-img-wrap')?.innerHTML || '';
+        card.style.opacity = '0.65';
+        card.style.pointerEvents = 'none';
+        card.style.padding = '.5rem .85rem';
+        card.innerHTML =
+          `<div class="lic-img-wrap" style="width:36px;height:36px;">${imgEl}</div>` +
+          `<div class="lic-body" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">` +
+            `<span style="font-weight:700;font-size:.82rem;color:#166534;">✅ ${itemName}</span>` +
+            `<span class="lic-status lic-status-returned" style="font-size:.68rem;">🟢 Returned / Found</span>` +
+          `</div>`;
+        // Also update every item card bubble in the chat thread
+        const linkedItemId = {{ conv.item_id if conv.item_id else 'null' }};
+        if (linkedItemId) refreshItemCardStatuses(linkedItemId, data.status);
+        showToast('🎉 Item marked as found! It\'s been moved to your history and removed from the public feed.', 'success');
+        return;
+      }
+
       // Update the header linked-item status badge
       const badge = document.getElementById('licStatusBadge');
       if (badge) {
@@ -1226,9 +1263,6 @@ async function updateItemStatus(newStatus) {
         if (IS_OWNER) {
           if (data.status !== 'returned') html += `<button class="lic-btn lic-btn-found" onclick="updateItemStatus('returned')">✅ Mark as Found</button>`;
           if (data.status !== 'listed')   html += `<button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>`;
-          if (data.status === 'returned') {
-            html += `<a href="${HISTORY_URL}" class="lic-btn" style="background:#f0fdf4;color:#166534;border:1px solid #86efac;text-decoration:none;">📋 View in History</a>`;
-          }
         } else {
           if (data.status === 'listed') {
             html += `<button class="lic-btn lic-btn-claim" onclick="updateItemStatus('claimed')">📦 Claim This Item</button>`;
@@ -1242,12 +1276,7 @@ async function updateItemStatus(newStatus) {
       // Also update every item card bubble in the chat thread
       const linkedItemId = {{ conv.item_id if conv.item_id else 'null' }};
       if (linkedItemId) refreshItemCardStatuses(linkedItemId, data.status);
-
-      if (newStatus === 'returned') {
-        showToast('🎉 Item marked as found! It\'s been moved to your history and removed from the public feed.', 'success');
-      } else {
-        showToast('Item status updated!', 'info');
-      }
+      showToast('Item status updated!', 'info');
     } else {
       showToast(data.error || 'Could not update status.', 'error');
     }
