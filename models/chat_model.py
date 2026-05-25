@@ -233,29 +233,76 @@ def get_total_unread(user_id: int) -> int:
     return count
 
 
-def get_all_conversations_admin() -> list[dict]:
+def get_all_conversations_admin(admin_id: int = None) -> list[dict]:
+    """Return all conversations for the admin inbox.
+
+    Returns the same field shape as get_user_conversations() so that
+    the inbox and conversation sidebar templates work without changes.
+    The 'other' user is always the non-admin participant (or user1 when
+    both are non-admin).
+    """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT
-            c.id AS conv_id,
+            c.id,
             c.item_id,
-            u1.full_name AS user1_name,
-            u2.full_name AS user2_name,
-            u1.id AS user1_id,
-            u2.id AS user2_id,
-            (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,
+            c.created_at    AS conv_created,
+            u1.id           AS user1_id,
+            u2.id           AS user2_id,
+            u1.full_name    AS user1_name,
+            u2.full_name    AS user2_name,
+            u1.role         AS user1_role,
+            u2.role         AS user2_role,
+            u1.profile_picture      AS user1_pic,
+            u2.profile_picture      AS user2_pic,
+            u1.profile_pic_status   AS user1_pic_status,
+            u2.profile_pic_status   AS user2_pic_status,
+            (SELECT content    FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,
             (SELECT created_at FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_at,
             i.name AS item_name
         FROM conversations c
         JOIN users u1 ON u1.id = c.user1_id
         JOIN users u2 ON u2.id = c.user2_id
         LEFT JOIN items i ON i.id = c.item_id
-        ORDER BY last_message_at DESC NULLS LAST
+        ORDER BY last_message_at DESC NULLS LAST, c.created_at DESC
     """)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        # Pick the non-admin side as "other"; fall back to user1
+        if d["user2_role"] != "admin":
+            other_id      = d["user2_id"]
+            other_name    = d["user2_name"]
+            other_role    = d["user2_role"]
+            other_pic     = d["user2_pic"]
+            other_pic_status = d["user2_pic_status"]
+        else:
+            other_id      = d["user1_id"]
+            other_name    = d["user1_name"]
+            other_role    = d["user1_role"]
+            other_pic     = d["user1_pic"]
+            other_pic_status = d["user1_pic_status"]
+
+        result.append({
+            "id":             d["id"],
+            "item_id":        d["item_id"],
+            "user1_id":       d["user1_id"],
+            "user2_id":       d["user2_id"],
+            "other_id":       other_id,
+            "other_name":     other_name,
+            "other_role":     other_role,
+            "other_pic":      other_pic,
+            "other_pic_status": other_pic_status,
+            "last_message":   d["last_message"],
+            "last_message_at": d["last_message_at"],
+            "item_name":      d["item_name"],
+            "unread_count":   0,  # admin sees all as read in inbox list
+        })
+    return result
 
 
 def delete_message(msg_id: int, sender_id: int) -> bool:

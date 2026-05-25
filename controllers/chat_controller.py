@@ -60,11 +60,16 @@ def admin_required(f):
 @login_required
 def inbox():
     user_id = session["user"]["id"]
-    conversations = get_user_conversations(user_id)
+    is_admin = session["user"].get("role") == "admin"
+    if is_admin:
+        conversations = get_all_conversations_admin()
+    else:
+        conversations = get_user_conversations(user_id)
     total_unread = get_total_unread(user_id)
     return render_template("chat/inbox.html",
                            conversations=conversations,
-                           total_unread=total_unread)
+                           total_unread=total_unread,
+                           is_admin=is_admin)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,16 +110,27 @@ def conversation(conv_id):
         flash("Conversation not found.", "error")
         return redirect(url_for("chat.inbox"))
 
-    # Access check — only participants can view
-    if conv["user1_id"] != user_id and conv["user2_id"] != user_id:
+    # Access check — only participants can view (admin can view all)
+    is_admin = session["user"].get("role") == "admin"
+    if not is_admin and conv["user1_id"] != user_id and conv["user2_id"] != user_id:
         flash("Access denied.", "error")
         return redirect(url_for("chat.inbox"))
 
-    other_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
+    # Determine other user — for admin viewing a conv they aren't in, pick user1
+    if conv["user1_id"] == user_id:
+        other_id = conv["user2_id"]
+    elif conv["user2_id"] == user_id:
+        other_id = conv["user1_id"]
+    else:
+        # Admin viewing a conversation they're not part of — show user1 as "other"
+        other_id = conv["user1_id"]
     other_user = get_user_by_id(other_id)
     messages = get_messages(conv_id)
     mark_messages_read(conv_id, user_id)
-    conversations = get_user_conversations(user_id)
+    if is_admin:
+        conversations = get_all_conversations_admin()
+    else:
+        conversations = get_user_conversations(user_id)
 
     # Fetch linked item if any
     linked_item = get_item_by_id(conv["item_id"]) if conv.get("item_id") else None
@@ -167,7 +183,9 @@ def send(conv_id):
     if not conv:
         return jsonify({"ok": False, "error": "Conversation not found"}), 404
 
-    if conv["user1_id"] != user_id and conv["user2_id"] != user_id:
+    is_admin = session["user"].get("role") == "admin"
+    if not is_admin and conv["user1_id"] != user_id and conv["user2_id"] != user_id:
+        return jsonify({"ok": False, "error": "Access denied"}), 403
         return jsonify({"ok": False, "error": "Access denied"}), 403
 
     # ✅ NEW: support JSON + FormData
@@ -271,9 +289,10 @@ def poll(conv_id):
 
 def _poll_impl(conv_id):
     user_id = session["user"]["id"]
+    is_admin = session["user"].get("role") == "admin"
     conv = get_conversation_by_id(conv_id)
 
-    if not conv or (conv["user1_id"] != user_id and conv["user2_id"] != user_id):
+    if not conv or (not is_admin and conv["user1_id"] != user_id and conv["user2_id"] != user_id):
         return jsonify({"ok": True, "messages": [], "error": "not_participant"}), 200
 
     since_id = request.args.get("since", 0, type=int)

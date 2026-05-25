@@ -531,7 +531,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 </style>
 {% endblock %}
 
-{% block content %}
+{% block admin_content %}{% block content %}
 <div class="chat-layout">
 
   <!-- ══ Sidebar ══ -->
@@ -1304,4 +1304,4 @@ function showToast(msg, type = 'info') {
 }
 
 </script>
-{% endblock %}
+{% endblock content %}{% endblock admin_content %}

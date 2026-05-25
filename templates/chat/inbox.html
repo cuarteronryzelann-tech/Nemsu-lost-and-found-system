@@ -284,7 +284,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block admin_content %}{% block content %}
 <div class="inbox-page">
 
   <!-- Header -->
@@ -413,4 +413,4 @@ function filterConvs(q) {
   });
 }
 </script>
-{% endblock %}
+{% endblock content %}{% endblock admin_content %}
