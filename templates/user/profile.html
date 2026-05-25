@@ -906,7 +906,7 @@ input[type=file].hidden-input {
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('reports')" id="tab-reports">
                 <i class="fas fa-file-alt"></i> My Reports
-                <span class="tab-count" id="tc-reports">{{ ((my_lost_items|default([])) + (my_found_items|default([]))) | selectattr('status', '!=', 'returned') | list | length }}</span>
+                <span class="tab-count" id="tc-reports">{{ ((my_lost_items|default([])) + (my_found_items|default([]))) | rejectattr('status', 'equalto', 'returned') | rejectattr('status', 'equalto', 'claimed') | list | length }}</span>
             </button>
             <button class="tab-btn" onclick="switchTab('claims')" id="tab-claims">
                 <i class="fas fa-clipboard-check"></i> My Claims
@@ -920,16 +920,16 @@ input[type=file].hidden-input {
 
         <!-- My Reports Panel -->
         <div class="tab-panel active" id="panel-reports">
-            {% set all_my_items = [] %}
-            {% for item in (my_lost_items or []) + (my_found_items or []) %}
-                {% if item.status != 'returned' and not (item.type|lower == 'found' and item.status == 'claimed') %}
-                    {% set all_my_items = all_my_items + [item] %}
-                {% endif %}
-            {% endfor %}
-            {% set all_my_items = all_my_items | sort(attribute='date_reported', reverse=True) %}
+            {# Jinja2 fix: rejectattr filter chain instead of loop variable assignment
+               Variables set inside {%% for %%} loops don't propagate to the outer scope in Jinja2 #}
+            {% set all_my_items = ((my_lost_items or []) + (my_found_items or []))
+                | rejectattr('status', 'equalto', 'returned')
+                | rejectattr('status', 'equalto', 'claimed')
+                | sort(attribute='date_reported', reverse=True)
+                | list %}
             {% if all_my_items %}
             <div class="items-grid2">
-                {% for item in all_my_items | sort(attribute='date_reported', reverse=True) %}
+                {% for item in all_my_items %}
                 <div class="item-card2">
                     <div class="ic2-img">
                         {% if item.image_filename %}
