@@ -446,17 +446,23 @@ def update_item_status_from_chat(conv_id):
     item = get_item_by_id(conv["item_id"])
     if not item:
         return jsonify({"ok": False, "error": "Item not found"}), 404
-    if item["reported_by"] != user_id:
-        return jsonify({"ok": False, "error": "Only the item owner can update status"}), 403
+
+    is_owner = item["reported_by"] == user_id
+    other_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
 
     data = request.get_json(silent=True) or {}
     new_status = data.get("status")
-    if new_status not in ("listed", "claimed", "returned"):
-        return jsonify({"ok": False, "error": "Invalid status"}), 400
+
+    # Non-owner (claimant) can only set status to "claimed" or revert to "listed"
+    if not is_owner:
+        if new_status not in ("claimed", "listed"):
+            return jsonify({"ok": False, "error": "You can only claim or unmark this item"}), 403
+    else:
+        if new_status not in ("listed", "claimed", "returned"):
+            return jsonify({"ok": False, "error": "Invalid status"}), 400
 
     if new_status == "returned":
         # Record who helped return it (the other participant in the chat)
-        other_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
         mark_item_returned(conv["item_id"], found_by_user_id=other_id)
 
         # Notify the other user
@@ -467,6 +473,17 @@ def update_item_status_from_chat(conv_id):
             notif_type="success",
             link=f"/chat/{conv_id}"
         )
+    elif new_status == "claimed":
+        update_item_status(conv["item_id"], new_status)
+        # Notify the item owner that someone has claimed it
+        if not is_owner:
+            item_name = item.get("name", "the item")
+            add_notification(
+                user_id=other_id,
+                message=f"📦 '{item_name}' has been claimed by someone. Check your chat!",
+                notif_type="info",
+                link=f"/chat/{conv_id}"
+            )
     else:
         update_item_status(conv["item_id"], new_status)
 

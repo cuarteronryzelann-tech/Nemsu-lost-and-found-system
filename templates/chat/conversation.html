@@ -507,6 +507,8 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
 }
 .lic-btn-found  { background: #10b981; color: #fff; }
 .lic-btn-found:hover  { background: #059669; }
+.lic-btn-claim  { background: #f59e0b; color: #fff; }
+.lic-btn-claim:hover  { background: #d97706; }
 .lic-btn-reopen { background: #e0e7ff; color: #3730a3; }
 .lic-btn-reopen:hover { background: #c7d2fe; }
 @media (max-width: 480px) {
@@ -632,6 +634,15 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
             {% endif %}
             {% if linked_item.status != 'listed' %}
             <button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="lic-owner-actions" id="licOwnerActions">
+            {% if linked_item.status == 'listed' %}
+            <button class="lic-btn lic-btn-claim" onclick="updateItemStatus('claimed')">📦 Claim This Item</button>
+            {% elif linked_item.status == 'claimed' %}
+            <span style="font-size:.72rem;color:#854d0e;font-weight:600;">🟡 You claimed this</span>
+            <button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">↩ Unmark</button>
             {% endif %}
           </div>
           {% endif %}
@@ -1189,6 +1200,7 @@ function closeLightbox() {
 
 // ── Item status update ──
 const ITEM_STATUS_URL = "{{ url_for('chat.update_item_status_from_chat', conv_id=conv.id) }}";
+const IS_OWNER = {{ 'true' if linked_item and linked_item.user_id == current_user_id else 'false' if linked_item else 'null' }};
 const HISTORY_URL     = "{{ url_for('user.my_items_history') }}";
 
 async function updateItemStatus(newStatus) {
@@ -1211,10 +1223,19 @@ async function updateItemStatus(newStatus) {
       const actions = document.getElementById('licOwnerActions');
       if (actions) {
         let html = '';
-        if (data.status !== 'returned') html += `<button class="lic-btn lic-btn-found" onclick="updateItemStatus('returned')">✅ Mark as Found</button>`;
-        if (data.status !== 'listed')   html += `<button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>`;
-        if (data.status === 'returned') {
-          html += `<a href="${HISTORY_URL}" class="lic-btn" style="background:#f0fdf4;color:#166534;border:1px solid #86efac;text-decoration:none;">📋 View in History</a>`;
+        if (IS_OWNER) {
+          if (data.status !== 'returned') html += `<button class="lic-btn lic-btn-found" onclick="updateItemStatus('returned')">✅ Mark as Found</button>`;
+          if (data.status !== 'listed')   html += `<button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">🔄 Still Looking</button>`;
+          if (data.status === 'returned') {
+            html += `<a href="${HISTORY_URL}" class="lic-btn" style="background:#f0fdf4;color:#166534;border:1px solid #86efac;text-decoration:none;">📋 View in History</a>`;
+          }
+        } else {
+          if (data.status === 'listed') {
+            html += `<button class="lic-btn lic-btn-claim" onclick="updateItemStatus('claimed')">📦 Claim This Item</button>`;
+          } else if (data.status === 'claimed') {
+            html += `<span style="font-size:.72rem;color:#854d0e;font-weight:600;">🟡 You claimed this</span>`;
+            html += `<button class="lic-btn lic-btn-reopen" onclick="updateItemStatus('listed')">↩ Unmark</button>`;
+          }
         }
         actions.innerHTML = html;
       }
