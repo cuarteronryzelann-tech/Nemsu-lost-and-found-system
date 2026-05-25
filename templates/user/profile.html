@@ -507,13 +507,19 @@ input[type=file].hidden-input {
 
 /* ── My Activity Tabs (transferred from dashboard) ── */
 .activity-section{margin-top:2rem}
-.tab-nav{display:flex;gap:.5rem;border-bottom:2px solid var(--gray-200);margin-bottom:1.5rem}
+.tab-nav{
+    display:flex;gap:0;border-bottom:2px solid var(--gray-200);
+    margin-bottom:1.5rem;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.tab-nav::-webkit-scrollbar{display:none}
 .tab-btn{
-    padding:.6rem 1.2rem;border:none;background:none;cursor:pointer;
-    font-size:.9rem;font-weight:600;color:var(--gray-600);
+    padding:.6rem .9rem;border:none;background:none;cursor:pointer;
+    font-size:.85rem;font-weight:600;color:var(--gray-600);
     border-radius:10px 10px 0 0;transition:all .2s;
     position:relative;bottom:-2px;border-bottom:3px solid transparent;
-    display:flex;align-items:center;gap:.4rem;
+    display:flex;align-items:center;gap:.35rem;
+    white-space:nowrap;flex-shrink:0;
 }
 .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
 .tab-btn:hover:not(.active){color:var(--gray-800);background:var(--gray-50)}
@@ -914,7 +920,13 @@ input[type=file].hidden-input {
 
         <!-- My Reports Panel -->
         <div class="tab-panel active" id="panel-reports">
-            {% set all_my_items = ((my_lost_items or []) + (my_found_items or [])) | selectattr('status', '!=', 'returned') | list %}
+            {% set all_my_items = [] %}
+            {% for item in (my_lost_items or []) + (my_found_items or []) %}
+                {% if item.status != 'returned' and not (item.type|lower == 'found' and item.status == 'claimed') %}
+                    {% set all_my_items = all_my_items + [item] %}
+                {% endif %}
+            {% endfor %}
+            {% set all_my_items = all_my_items | sort(attribute='date_reported', reverse=True) %}
             {% if all_my_items %}
             <div class="items-grid2">
                 {% for item in all_my_items | sort(attribute='date_reported', reverse=True) %}
