@@ -119,13 +119,22 @@ def conversation(conv_id):
     # Fetch linked item if any
     linked_item = get_item_by_id(conv["item_id"]) if conv.get("item_id") else None
 
+    # Pre-load item data for item_card messages so the template can render them
+    item_card_items = {}
+    for msg in messages:
+        if msg.get("msg_type") == "item_card" and msg.get("ref_item_id"):
+            rid = msg["ref_item_id"]
+            if rid not in item_card_items:
+                item_card_items[rid] = get_item_by_id(rid)
+
     return render_template("chat/conversation.html",
                            conv=conv,
                            other_user=other_user,
                            messages=messages,
                            conversations=conversations,
                            current_user_id=user_id,
-                           linked_item=linked_item)
+                           linked_item=linked_item,
+                           item_card_items=item_card_items)
 
 
 from werkzeug.utils import secure_filename
@@ -233,14 +242,17 @@ def send(conv_id):
     return jsonify({
         "ok": True,
         "message": {
-            "id": msg["id"],
-            "content": msg["content"],
-            "image": filename,  # 👈 IMPORTANT
-            "sender_id": msg["sender_id"],
+            "id":          msg["id"],
+            "content":     msg["content"],
+            "image":       filename,
+            "sender_id":   msg["sender_id"],
             "sender_name": msg["sender_name"],
-            "sender_pic": msg.get("sender_pic", ""),
-            "created_at": msg["created_at"],
-            "is_mine": True
+            "sender_pic":  msg.get("sender_pic", ""),
+            "created_at":  msg["created_at"],
+            "is_mine":     True,
+            "msg_type":    msg.get("msg_type", "text"),
+            "ref_item_id": msg.get("ref_item_id"),
+            "item_card":   None,
         }
     })
 # ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +307,30 @@ def _poll_impl(conv_id):
     # seen_ids — messages we sent that the other user has now read
     seen_ids = [m["id"] for m in new_msgs if m["sender_id"] == user_id and m.get("is_read")]
 
+    # Pre-load item data for any item_card messages in this batch
+    item_cards = {}
+    for m in new_msgs:
+        if m.get("msg_type") == "item_card" and m.get("ref_item_id"):
+            rid = m["ref_item_id"]
+            if rid not in item_cards:
+                item_cards[rid] = get_item_by_id(rid)
+
+    def _item_card_data(rid):
+        item = item_cards.get(rid)
+        if not item:
+            return None
+        return {
+            "id":             item["id"],
+            "name":           item.get("name", ""),
+            "type":           item.get("type", ""),
+            "status":         item.get("status", ""),
+            "category":       item.get("category", ""),
+            "location":       item.get("location", ""),
+            "date_reported":  item.get("date_reported", ""),
+            "image_filename": item.get("image_filename", ""),
+            "url":            f"/items/{item['id']}",
+        }
+
     return jsonify({
         "ok": True,
         "other_online": other_online,
@@ -302,15 +338,18 @@ def _poll_impl(conv_id):
         "seen_ids": seen_ids,
         "messages": [
             {
-                "id": m["id"],
-                "content": m["content"],
-                "image": (m["image_filename"] if m.get("image_filename") and m["image_filename"].startswith("http") else ""),
-                "sender_id": m["sender_id"],
+                "id":          m["id"],
+                "content":     m["content"],
+                "image":       (m["image_filename"] if m.get("image_filename") and m["image_filename"].startswith("http") else ""),
+                "sender_id":   m["sender_id"],
                 "sender_name": m["sender_name"],
-                "sender_pic": m.get("sender_pic", ""),
-                "created_at": m["created_at"],
-                "is_mine": m["sender_id"] == user_id,
-                "is_deleted": bool(m.get("is_deleted")),
+                "sender_pic":  m.get("sender_pic", ""),
+                "created_at":  m["created_at"],
+                "is_mine":     m["sender_id"] == user_id,
+                "is_deleted":  bool(m.get("is_deleted")),
+                "msg_type":    m.get("msg_type", "text"),
+                "ref_item_id": m.get("ref_item_id"),
+                "item_card":   _item_card_data(m["ref_item_id"]) if m.get("msg_type") == "item_card" and m.get("ref_item_id") else None,
             } for m in new_msgs
         ]
     })

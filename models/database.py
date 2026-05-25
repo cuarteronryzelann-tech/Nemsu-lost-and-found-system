@@ -494,6 +494,8 @@ def _init_schema(cursor):
     _migrate(cursor, "messages", [
         ("image_filename", "TEXT"),
         ("is_deleted",     "INTEGER DEFAULT 0"),
+        ("msg_type",       "TEXT DEFAULT 'text'"),   # 'text' | 'item_card'
+        ("ref_item_id",    "INTEGER"),               # linked item for item_card messages
     ])
 
     cursor.execute("""

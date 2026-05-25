@@ -128,6 +128,7 @@ def get_messages(conv_id: int, limit: int = 100) -> list[dict]:
     cursor.execute("""
         SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_filename,
                m.is_read, m.is_deleted, m.created_at,
+               m.msg_type, m.ref_item_id,
                u.full_name AS sender_name,
                u.profile_picture AS sender_pic,
                u.profile_pic_status AS sender_pic_status,
@@ -149,6 +150,7 @@ def get_messages_since(conv_id: int, since_id: int) -> list[dict]:
     cursor.execute("""
         SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_filename,
                m.is_read, m.is_deleted, m.created_at,
+               m.msg_type, m.ref_item_id,
                u.full_name AS sender_name,
                u.profile_picture AS sender_pic,
                u.profile_pic_status AS sender_pic_status,
@@ -164,14 +166,18 @@ def get_messages_since(conv_id: int, since_id: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def send_message(conv_id: int, sender_id: int, content: str, image_filename: str = None) -> dict:
+def send_message(conv_id: int, sender_id: int, content: str,
+                 image_filename: str = None,
+                 msg_type: str = "text",
+                 ref_item_id: int = None) -> dict:
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO messages (conversation_id, sender_id, content, image_filename, created_at)
-        VALUES (?, ?, ?, ?, datetime('now'))
-    """, (conv_id, sender_id, content, image_filename))
+        INSERT INTO messages (conversation_id, sender_id, content, image_filename,
+                              msg_type, ref_item_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    """, (conv_id, sender_id, content, image_filename, msg_type, ref_item_id))
     conn.commit()
     msg_id = cursor.lastrowid
 
@@ -179,6 +185,7 @@ def send_message(conv_id: int, sender_id: int, content: str, image_filename: str
     cursor.execute("""
         SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_filename,
                m.is_read, m.is_deleted, m.created_at,
+               m.msg_type, m.ref_item_id,
                u.full_name AS sender_name,
                u.profile_picture AS sender_pic,
                u.profile_pic_status AS sender_pic_status,

@@ -12,7 +12,7 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    session, request, flash, jsonify)
 from models.item_model import get_item_by_id, create_item
 from models.user_model import get_user_by_id
-from models.chat_model import get_or_create_conversation
+from models.chat_model import get_or_create_conversation, send_message
 from models.notification_model import add_notification
 
 item_bp = Blueprint("item", __name__, url_prefix="/items")
@@ -143,6 +143,20 @@ def i_found_it(item_id: int):
 
     # ── Open chat linked to the LOST item ────────────────────────────────────
     conv = get_or_create_conversation(finder_id, owner_id, item_id=item_id)
+
+    # ── Auto-send greeting + item card in the chat ───────────────────────────
+    finder_name = session["user"]["full_name"].split()[0]
+    greeting = (
+        f"Hi! 👋 I'm {finder_name}. I think I found your lost item — "
+        f"I can help return it to you!"
+    )
+    send_message(conv["id"], finder_id, greeting)
+    send_message(
+        conv["id"], finder_id,
+        content=f"📦 Here's the item I found:",
+        msg_type="item_card",
+        ref_item_id=item_id,
+    )
 
     # ── Notify the owner ─────────────────────────────────────────────────────
     finder_name  = session["user"]["full_name"].split()[0]

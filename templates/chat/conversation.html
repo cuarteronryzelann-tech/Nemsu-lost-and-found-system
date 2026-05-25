@@ -265,6 +265,50 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
     display: block; cursor: pointer; border: 1px solid rgba(0,0,0,.08);
 }
 
+/* ── Item card bubble ── */
+.msg-item-card {
+    width: 260px; max-width: 100%;
+    border-radius: 14px; overflow: hidden;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    text-decoration: none; display: block;
+    transition: box-shadow .18s, border-color .18s;
+    margin-bottom: .25rem;
+}
+.msg-item-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.13); border-color: #1a56db; }
+.msg-item-card-img {
+    width: 100%; height: 130px;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+}
+.msg-item-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.msg-item-card-img .no-img { font-size: 2.2rem; color: #cbd5e1; }
+.msg-item-card-body { padding: .65rem .75rem .6rem; }
+.msg-item-card-name {
+    font-weight: 800; font-size: .88rem; color: #0f172a;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: .25rem;
+}
+.msg-item-card-meta { display: flex; flex-wrap: wrap; gap: .25rem .5rem; margin-bottom: .3rem; }
+.mic-badge {
+    font-size: .64rem; font-weight: 800; padding: .1rem .45rem;
+    border-radius: 999px; text-transform: uppercase;
+}
+.mic-badge.lost   { background: #fee2e2; color: #991b1b; }
+.mic-badge.found  { background: #dbeafe; color: #1d4ed8; }
+.mic-badge.status-listed   { background: #eff6ff; color: #1d4ed8; }
+.mic-badge.status-approved { background: #f0fdf4; color: #166534; }
+.mic-badge.status-returned { background: #dcfce7; color: #166534; }
+.mic-badge.status-claimed  { background: #fef9c3; color: #854d0e; }
+.msg-item-card-loc { font-size: .72rem; color: #64748b; display:flex; align-items:center; gap:.2rem; }
+.msg-item-card-footer {
+    font-size: .7rem; color: #1a56db; font-weight: 700;
+    padding: .35rem .75rem; border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+}
+
 /* Typing indicator */
 .typing-indicator-wrap { display: flex; align-items: flex-end; gap: .5rem; padding: 4px 1rem 8px; }
 .typing-bubble {
@@ -642,6 +686,44 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                     {% if is_mine %}You deleted this message.{% else %}This message was deleted.{% endif %}
                   </div>
                 {% else %}
+                  {% if msg.msg_type == 'item_card' and msg.ref_item_id %}
+                    {% set card_item = item_card_items.get(msg.ref_item_id) %}
+                    {% if card_item %}
+                    <a href="{{ url_for('item.item_detail', item_id=card_item.id) }}"
+                       class="msg-item-card"
+                       data-item-id="{{ card_item.id }}"
+                       data-item-status="{{ card_item.status }}">
+                      <div class="msg-item-card-img">
+                        {% if card_item.image_filename %}
+                        <img src="{{ image_src(card_item.image_filename, 'items') }}"
+                             alt="{{ card_item.name }}"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="no-img" style="display:none">📦</div>
+                        {% else %}
+                        <div class="no-img">📦</div>
+                        {% endif %}
+                      </div>
+                      <div class="msg-item-card-body">
+                        <div class="msg-item-card-name">{{ card_item.name }}</div>
+                        <div class="msg-item-card-meta">
+                          <span class="mic-badge {{ card_item.type | lower }}">{{ card_item.type }}</span>
+                          <span class="mic-badge status-{{ card_item.status | lower }}"
+                                data-item-status-badge="{{ card_item.id }}">
+                            {%- if card_item.status == 'returned' %}🟢 Returned / Found
+                            {%- elif card_item.status == 'claimed'  %}🟡 Claimed
+                            {%- elif card_item.status == 'approved' %}Approved
+                            {%- else %}{{ card_item.status | capitalize }}{% endif -%}
+                          </span>
+                        </div>
+                        <div class="msg-item-card-loc">📍 {{ card_item.location }}</div>
+                      </div>
+                      <div class="msg-item-card-footer">Tap to view details →</div>
+                    </a>
+                    {% endif %}
+                    {% if msg.content %}
+                    <div class="msg-content">{{ msg.content }}</div>
+                    {% endif %}
+                  {% else %}
                   {% if msg.image_filename %}
                   {% set img_url = image_src(msg.image_filename, 'chat') %}
                   {% if img_url %}
@@ -659,6 +741,7 @@ body.layout-admin .chat-layout { height: 100vh; height: 100dvh; }
                   {% endif %}
                   {% if msg.content %}
                   <div class="msg-content">{{ msg.content }}</div>
+                  {% endif %}
                   {% endif %}
                 {% endif %}
 
@@ -811,6 +894,10 @@ async function poll() {
         if (msg.is_deleted) { handleUnsent(msg.id); return; }
         if (msg.sender_id === CURRENT_UID) return; // skip own (optimistic)
         appendMessage(msg, 'received');
+        // If an item_card just arrived, refresh all card badges for that item
+        if (msg.msg_type === 'item_card' && msg.ref_item_id && msg.item_card) {
+          refreshItemCardStatuses(msg.ref_item_id, msg.item_card.status);
+        }
       });
     }
 
@@ -946,14 +1033,35 @@ function appendMessage(msg, type, isPending = false) {
     ? `<div class="msg-sender-row"><span class="msg-sender-name">{{ other_user.full_name.split()[0] }}</span></div>`
     : '';
 
-  // ── Image attachment — matches NEMSU Marketplace pattern ──
+  // ── Item card ──
+  let itemCardHtml = '';
+  if (msg.msg_type === 'item_card' && msg.item_card) {
+    const ic = msg.item_card;
+    const imgHtml = (ic.image_filename && ic.image_filename.startsWith('http'))
+      ? `<img src="${ic.image_filename}" alt="${escapeHtml(ic.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<div class=no-img style=font-size:2rem;color:#cbd5e1>📦</div>'">`
+      : `<div class="no-img" style="font-size:2rem;color:#cbd5e1;">📦</div>`;
+    const sLabels = { listed:'Listed', approved:'Approved', returned:'🟢 Returned / Found', claimed:'🟡 Claimed' };
+    const sLabel  = sLabels[ic.status] || ic.status;
+    itemCardHtml = `<a href="${ic.url}" class="msg-item-card" data-item-id="${ic.id}" data-item-status="${ic.status}">` +
+      `<div class="msg-item-card-img">${imgHtml}</div>` +
+      `<div class="msg-item-card-body">` +
+        `<div class="msg-item-card-name">${escapeHtml(ic.name)}</div>` +
+        `<div class="msg-item-card-meta">` +
+          `<span class="mic-badge ${ic.type}">${ic.type}</span>` +
+          `<span class="mic-badge status-${ic.status}" data-item-status-badge="${ic.id}">${sLabel}</span>` +
+        `</div>` +
+        `<div class="msg-item-card-loc">📍 ${escapeHtml(ic.location)}</div>` +
+      `</div>` +
+      `<div class="msg-item-card-footer">Tap to view details →</div>` +
+    `</a>`;
+  }
+
+  // ── Image attachment ──
   let attachHtml = '';
-  if (msg.image) {
+  if (msg.image && msg.msg_type !== 'item_card') {
     if (msg.image.startsWith('http') || msg.image.startsWith('blob:')) {
-      // ImgBB URL or local blob preview — render clickable image
       attachHtml = `<div class="msg-attachment-img"><a href="${msg.image}" target="_blank" rel="noopener"><img src="${msg.image}" alt="Image" loading="lazy" referrerpolicy="no-referrer" onclick="openLightbox(this.src); return false;" onerror="this.closest('.msg-attachment-img').innerHTML='<div style=padding:.5rem;color:#94a3b8;font-size:.8rem>&#128247; Image unavailable</div>'" /></a></div>`;
     }
-    // Bare filename (legacy) → no img tag, no 404 request, just silence
   }
 
   const contentHtml = msg.content
@@ -969,7 +1077,7 @@ function appendMessage(msg, type, isPending = false) {
 
   wrap.innerHTML = avatarHtml +
     `<div class="message-bubble-group">${senderRow}` +
-      `<div class="message-bubble">${attachHtml}${contentHtml}` +
+      `<div class="message-bubble">${itemCardHtml}${attachHtml}${contentHtml}` +
         `<div class="msg-footer"><span class="msg-time">${msg.time || 'Just now'}</span>${statusHtml}</div>` +
       `</div>` +
     `</div>`;
@@ -978,6 +1086,20 @@ function appendMessage(msg, type, isPending = false) {
   scrollToBottom(true);
   attachContextMenu(wrap);
   return wrap;
+}
+
+// ── Refresh all item-card status badges in chat when status changes ──
+function refreshItemCardStatuses(itemId, newStatus) {
+  const sLabels = { listed:'Listed', approved:'Approved', returned:'🟢 Returned / Found', claimed:'🟡 Claimed' };
+  const label   = sLabels[newStatus] || newStatus;
+  document.querySelectorAll(`.msg-item-card[data-item-id="${itemId}"]`).forEach(card => {
+    card.dataset.itemStatus = newStatus;
+    const badge = card.querySelector(`[data-item-status-badge="${itemId}"]`);
+    if (badge) {
+      badge.className = `mic-badge status-${newStatus}`;
+      badge.textContent = label;
+    }
+  });
 }
 
 function escapeHtml(str) {
@@ -1078,7 +1200,7 @@ async function updateItemStatus(newStatus) {
     });
     const data = await res.json();
     if (data.ok) {
-      // Update status badge text
+      // Update the header linked-item status badge
       const badge = document.getElementById('licStatusBadge');
       if (badge) {
         const labels = { listed: '🔵 Listed', claimed: '🟡 Claimed', returned: '🟢 Returned / Found' };
@@ -1096,6 +1218,10 @@ async function updateItemStatus(newStatus) {
         }
         actions.innerHTML = html;
       }
+      // Also update every item card bubble in the chat thread
+      const linkedItemId = {{ conv.item_id if conv.item_id else 'null' }};
+      if (linkedItemId) refreshItemCardStatuses(linkedItemId, data.status);
+
       if (newStatus === 'returned') {
         showToast('🎉 Item marked as found! It\'s been moved to your history and removed from the public feed.', 'success');
       } else {
