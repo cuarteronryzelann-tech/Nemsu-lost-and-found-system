@@ -900,7 +900,7 @@ input[type=file].hidden-input {
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('reports')" id="tab-reports">
                 <i class="fas fa-file-alt"></i> My Reports
-                <span class="tab-count" id="tc-reports">{{ (my_lost_items|default([])|length) + (my_found_items|default([])|length) }}</span>
+                <span class="tab-count" id="tc-reports">{{ ((my_lost_items|default([])) + (my_found_items|default([]))) | selectattr('status', '!=', 'returned') | list | length }}</span>
             </button>
             <button class="tab-btn" onclick="switchTab('claims')" id="tab-claims">
                 <i class="fas fa-clipboard-check"></i> My Claims
@@ -914,7 +914,7 @@ input[type=file].hidden-input {
 
         <!-- My Reports Panel -->
         <div class="tab-panel active" id="panel-reports">
-            {% set all_my_items = (my_lost_items or []) + (my_found_items or []) %}
+            {% set all_my_items = ((my_lost_items or []) + (my_found_items or [])) | selectattr('status', '!=', 'returned') | list %}
             {% if all_my_items %}
             <div class="items-grid2">
                 {% for item in all_my_items | sort(attribute='date_reported', reverse=True) %}
@@ -1109,6 +1109,71 @@ input[type=file].hidden-input {
 
         <!-- History Panel -->
         <div class="tab-panel" id="panel-history">
+            <style>
+                .hist-card {
+                    background:#fff; border-radius:14px;
+                    box-shadow:0 1px 6px rgba(0,0,0,.08);
+                    border-left:4px solid #22c55e;
+                    overflow:hidden; transition:box-shadow .2s;
+                    display:flex; flex-direction:column;
+                }
+                .hist-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.12); }
+                .hist-img-wrap {
+                    width:100%; height:180px; flex-shrink:0;
+                    background:#f1f5f9;
+                    display:flex; align-items:center; justify-content:center;
+                    overflow:hidden;
+                }
+                .hist-img-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+                .hist-img-placeholder { font-size:2.5rem; color:#cbd5e1; }
+                .hist-body { padding:.9rem 1rem; }
+                .hist-header {
+                    display:flex; align-items:flex-start;
+                    justify-content:space-between; gap:.5rem;
+                    margin-bottom:.45rem; flex-wrap:wrap;
+                }
+                .hist-name {
+                    font-size:.95rem; font-weight:800; color:#0f172a; margin:0;
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;
+                }
+                .hist-badges { display:flex; gap:.35rem; flex-wrap:wrap; align-items:center; }
+                .hist-badge-type {
+                    font-size:.65rem; font-weight:800; padding:.15rem .5rem;
+                    border-radius:999px; text-transform:uppercase;
+                }
+                .hist-badge-type.lost  { background:#fee2e2; color:#991b1b; }
+                .hist-badge-type.found { background:#dbeafe; color:#1d4ed8; }
+                .hist-badge-resolved {
+                    display:inline-flex; align-items:center; gap:.3rem;
+                    background:#dcfce7; color:#166534;
+                    font-size:.7rem; font-weight:700;
+                    padding:.15rem .55rem; border-radius:999px;
+                }
+                .hist-meta {
+                    display:grid; grid-template-columns:1fr 1fr;
+                    gap:.25rem .6rem; font-size:.79rem; color:#64748b;
+                    margin-bottom:.6rem;
+                }
+                @media(max-width:480px){ .hist-meta { grid-template-columns:1fr; } }
+                .hist-resolver {
+                    display:flex; align-items:center; gap:.5rem;
+                    background:#f0fdf4; border:1px solid #bbf7d0;
+                    border-radius:8px; padding:.4rem .75rem;
+                    font-size:.8rem; color:#166534; font-weight:600;
+                    margin-bottom:.6rem;
+                }
+                .hist-actions {
+                    margin-top:.5rem; padding-top:.5rem;
+                    border-top:1px solid #f1f5f9;
+                }
+                .hist-btn-detail {
+                    display:inline-flex; align-items:center; gap:.3rem;
+                    padding:.38rem .85rem; border-radius:8px; font-size:.8rem;
+                    font-weight:700; background:#1a56db; color:#fff;
+                    text-decoration:none; transition:background .15s;
+                }
+                .hist-btn-detail:hover { background:#1341a8; }
+            </style>
             {% set resolved = resolved_items|default([]) %}
             {% if resolved %}
             <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.75rem;font-size:.88rem;color:#166534;font-weight:600;">
@@ -1117,35 +1182,37 @@ input[type=file].hidden-input {
             </div>
             <div style="display:flex;flex-direction:column;gap:1rem;">
                 {% for item in resolved %}
-                <div style="background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.08);border-left:4px solid #22c55e;overflow:hidden;display:flex;transition:box-shadow .2s;">
-                    <div style="width:100px;min-height:100px;flex-shrink:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <div class="hist-card">
+                    <div class="hist-img-wrap">
                         {% if item.image_filename %}
-                        <img src="{{ image_src(item.image_filename, 'items') }}" alt="{{ item.name }}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'" loading="lazy">
+                        <img src="{{ image_src(item.image_filename, 'items') }}" alt="{{ item.name }}"
+                             loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <span class="hist-img-placeholder" style="display:none;">📦</span>
                         {% else %}
-                        <span style="font-size:2rem;color:#cbd5e1;">📦</span>
+                        <span class="hist-img-placeholder">📦</span>
                         {% endif %}
                     </div>
-                    <div style="flex:1;padding:.9rem 1rem;min-width:0;">
-                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.45rem;flex-wrap:wrap;">
-                            <h4 style="font-size:.95rem;font-weight:800;color:#0f172a;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;">{{ item.name }}</h4>
-                            <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center;">
-                                <span style="font-size:.65rem;font-weight:800;padding:.15rem .5rem;border-radius:999px;text-transform:uppercase;{% if item.type|lower == 'lost' %}background:#fee2e2;color:#991b1b;{% else %}background:#dbeafe;color:#1d4ed8;{% endif %}">{{ item.type }}</span>
-                                <span style="display:inline-flex;align-items:center;gap:.3rem;background:#dcfce7;color:#166534;font-size:.7rem;font-weight:700;padding:.15rem .55rem;border-radius:999px;">✅ Resolved</span>
+                    <div class="hist-body">
+                        <div class="hist-header">
+                            <h4 class="hist-name">{{ item.name }}</h4>
+                            <div class="hist-badges">
+                                <span class="hist-badge-type {{ item.type|lower }}">{{ item.type }}</span>
+                                <span class="hist-badge-resolved">✅ Resolved</span>
                             </div>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.25rem .6rem;font-size:.79rem;color:#64748b;margin-bottom:.6rem;">
+                        <div class="hist-meta">
                             <div><strong style="color:#334155;">📍</strong> {{ item.location }}</div>
                             <div><strong style="color:#334155;">📂</strong> {{ item.category or '—' }}</div>
                             <div><strong style="color:#334155;">📅</strong> {{ item.date_reported }}</div>
                             {% if item.found_at %}<div><strong style="color:#334155;">🕐</strong> {{ item.found_at[:10] }}</div>{% endif %}
                         </div>
                         {% if item.found_by_name %}
-                        <div style="display:flex;align-items:center;gap:.5rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.4rem .75rem;font-size:.8rem;color:#166534;font-weight:600;margin-bottom:.6rem;">
+                        <div class="hist-resolver">
                             🤝 Returned with help from <strong>{{ item.found_by_name }}</strong>
                         </div>
                         {% endif %}
-                        <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f1f5f9;">
-                            <a href="{{ url_for('item.item_detail', item_id=item.id) }}" style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .8rem;border-radius:8px;font-size:.78rem;font-weight:700;background:#1a56db;color:#fff;text-decoration:none;">🔍 View Details</a>
+                        <div class="hist-actions">
+                            <a href="{{ url_for('item.item_detail', item_id=item.id) }}" class="hist-btn-detail">🔍 View Details</a>
                         </div>
                     </div>
                 </div>
